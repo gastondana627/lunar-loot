@@ -207,7 +207,12 @@ def display_start_screen():
         st.write("• Progress through levels with new space environments")
         st.write("• Earn bonus points for speed and combos")
         st.write("")
-        st.info("Camera Required: Ensure your webcam is enabled and you have adequate lighting")
+        st.info("⚠️ Camera Required: This game uses your webcam for hand tracking. Please grant camera permissions when prompted by your browser.")
+        st.write("")
+        st.markdown("**Browser Compatibility:**")
+        st.write("• Chrome (Recommended)")
+        st.write("• Firefox")
+        st.write("• Edge")
         st.write("")
         
         if st.button("Launch Mission", type="primary"):
@@ -549,20 +554,20 @@ if 'animation_bytes' not in st.session_state:
         st.error("Animation file not found. Check your directory")
 
 # --- Camera Setup & Initialization ---
-if 'cap' not in st.session_state:
+if 'cap' not in st.session_state and st.session_state.game_state == 'playing':
     if 'OPENCV_AVFOUNDATION_SKIP_AUTH' not in os.environ:
         print("Warning: OPENCV_AVFOUNDATION_SKIP_AUTH not set. Camera auth may fail.")
 
     st.session_state.cap = cv2.VideoCapture(0)
     if not st.session_state.cap.isOpened():
-        st.error("Cannot open camera. Check permissions.")
+        st.error("Camera access required. Please grant camera permissions in your browser and refresh the page.")
+        st.info("Note: This game requires a webcam to play. Make sure your browser has camera permissions enabled.")
         st.stop()  # Stop execution
 
     st.session_state.video_width = int(st.session_state.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     st.session_state.video_height = int(st.session_state.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     if st.session_state.video_width == 0 or st.session_state.video_width == 0:
         st.session_state.video_width, st.session_state.video_height = 640, 480
-        st.warning(f"Width/height are zero, defaulting to {st.session_state.video_width}x{st.session_state.video_height}")
 
     reset_level()  # Generate initial run
 
