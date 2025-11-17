@@ -4,23 +4,25 @@ Run this locally to generate all sound files for the game
 """
 
 import os
-from elevenlabs import generate, save, set_api_key
+from elevenlabs.client import ElevenLabs
+from elevenlabs import save
 
 # Set your API key (or use environment variable)
 API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
-if API_KEY:
-    set_api_key(API_KEY)
-else:
+if not API_KEY:
     print("⚠️  No API key found. Set ELEVENLABS_API_KEY environment variable")
     print("   Or edit this file and add your key directly")
     exit(1)
 
+# Initialize client
+client = ElevenLabs(api_key=API_KEY)
+
 # Create sounds directory
 os.makedirs("sounds", exist_ok=True)
 
-# Sound effects to generate - ALL 20 SOUNDS
+# Sound effects to generate - ALL 23 SOUNDS
 sounds = {
-    # Level announcements (11 total - one per background)
+    # Level announcements (14 total - one per background)
     "level_01_earth": "Level one! Welcome to Earth orbit. Let's collect some moonrocks!",
     "level_02_halley": "Level two! Halley's Comet approaches. Watch out for the cosmic debris!",
     "level_03_mars": "Level three! The red planet Mars. Time to explore the rusty surface!",
@@ -46,6 +48,7 @@ sounds = {
     "time_warning_5": "Five seconds left!",
     "game_over": "Game over! Thanks for playing Lunar Loot!",
     "high_score": "New high score! You're a moonrock master!",
+    "countdown": "Three, two, one, go!",
 }
 
 print("🎙️  Generating sound effects with ElevenLabs...")
@@ -56,10 +59,10 @@ for name, text in sounds.items():
     print(f"   Text: {text}")
     
     try:
-        # Generate audio
-        audio = generate(
+        # Generate audio using new API
+        audio = client.generate(
             text=text,
-            voice="Rachel",  # You can change this to other voices
+            voice="Rachel",
             model="eleven_monolingual_v1"
         )
         
