@@ -1,0 +1,104 @@
+═══════════════════════════════════════════════════════
+  MOONROCK COLLECTOR - DEPLOYMENT CHECKLIST
+  Chroma Awards 2025 Submission
+═══════════════════════════════════════════════════════
+
+PRE-DEPLOYMENT (5 minutes)
+═══════════════════════════════════════════════════════
+[ ] Test game locally: streamlit run catching_moonrocks.py
+[ ] Verify camera works
+[ ] Play through at least 2 levels
+[ ] Check all backgrounds load
+[ ] Verify rocket animation plays
+
+GITHUB SETUP (5 minutes)
+═══════════════════════════════════════════════════════
+[ ] Create new GitHub repository
+[ ] Name it: moonrock-collector (or similar)
+[ ] Make it public
+[ ] Copy the repository URL
+
+[ ] Run these commands:
+    git init
+    git add .
+    git commit -m "Moonrock Collector - Chroma Awards submission"
+    git branch -M main
+    git remote add origin YOUR_REPO_URL
+    git push -u origin main
+
+[ ] Verify all files uploaded to GitHub
+
+STREAMLIT CLOUD DEPLOYMENT (10 minutes)
+═══════════════════════════════════════════════════════
+[ ] Go to: https://share.streamlit.io
+[ ] Sign in with GitHub
+[ ] Click "New app"
+[ ] Select your repository
+[ ] Main file path: catching_moonrocks.py
+[ ] Click "Deploy"
+[ ] Wait for deployment (5-10 minutes)
+[ ] Copy your app URL: https://______.streamlit.app
+
+TESTING DEPLOYMENT (10 minutes)
+═══════════════════════════════════════════════════════
+[ ] Open your Streamlit Cloud URL
+[ ] Grant camera permissions
+[ ] Click "Start Game"
+[ ] Collect moonrocks with hand gestures
+[ ] Complete at least 1 level
+[ ] Verify rocket animation plays
+[ ] Check score tracking works
+[ ] Test "Play Again" button
+[ ] No errors in browser console
+
+OPTIONAL: ELEVENLABS AUDIO (20 minutes - SKIP IF SHORT ON TIME)
+═══════════════════════════════════════════════════════
+[ ] Get ElevenLabs API key from elevenlabs.io
+[ ] In Streamlit Cloud app settings, add secret:
+    ELEVENLABS_API_KEY = "your_key_here"
+[ ] Restart app
+[ ] Test audio plays
+
+COMPETITION SUBMISSION (5 minutes)
+═══════════════════════════════════════════════════════
+[ ] Go to Chroma Awards submission page
+[ ] Category: Experimental / Open
+[ ] Game URL: [Your Streamlit Cloud URL]
+[ ] Game Title: Moonrock Collector
+[ ] Description: (Copy from CHROMA_SUBMISSION.md)
+[ ] AI Tools Used: Google MediaPipe, ElevenLabs, Freepik
+[ ] Confirm created after Feb 1, 2025
+[ ] Submit!
+
+OPTIONAL EXTRAS (If time permits)
+═══════════════════════════════════════════════════════
+[ ] Download Chroma Awards logo
+[ ] Add logo to game start screen
+[ ] Record demo video (backup for judges)
+[ ] Share on social media with #ChromaAwards
+[ ] Tag @ChromaAwards
+
+FINAL CHECKS
+═══════════════════════════════════════════════════════
+[ ] Game URL is publicly accessible
+[ ] No login required
+[ ] No download required
+[ ] Works in Chrome/Firefox
+[ ] Completable in <30 minutes
+[ ] Single player mode works
+[ ] AI tools clearly credited
+
+═══════════════════════════════════════════════════════
+  ESTIMATED TOTAL TIME: 1-2 HOURS
+═══════════════════════════════════════════════════════
+
+YOUR DEPLOYMENT URL: _________________________________
+
+SUBMISSION CONFIRMATION: _____________________________
+
+NOTES:
+_______________________________________________________
+_______________________________________________________
+_______________________________________________________
+
+Good luck! 🚀🌙
