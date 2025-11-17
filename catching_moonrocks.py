@@ -533,12 +533,20 @@ elif st.session_state.game_state == 'playing':
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5)
     mp_drawing = mp.solutions.drawing_utils
-    #add the full screen background image here
+    # Add the full screen background image behind everything
     if st.session_state.background_image:
         background_image_bytes = convert_image_to_bytes(st.session_state.background_image)
         if background_image_bytes:
             st.session_state.background_image_bytes = background_image_bytes
             full_screen_background(st.session_state.background_image_bytes)
+    
+    # Add info about the dynamic overlay
+    st.markdown("""
+        <div style="position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); 
+                    padding: 10px; border-radius: 10px; font-size: 12px; z-index: 1000;">
+            💡 Background overlay intensifies as you collect moonrocks!
+        </div>
+    """, unsafe_allow_html=True)
 
     while st.session_state.cap.isOpened() and st.session_state.game_state == 'playing':  # keep the main loop here
 
@@ -603,7 +611,25 @@ elif st.session_state.game_state == 'playing':
                             st.rerun()
                             break  # VERY IMPORTANT BREAK THE GAME OR IT WONT GET STUCK
 
-        # Drawing and Display
+        # Add semi-transparent background overlay that changes with collection progress
+        if st.session_state.background_image:
+            # Calculate transparency based on moonrocks collected
+            total_rocks = NUM_MOONROCKS
+            collected = total_rocks - len(st.session_state.moonrocks)
+            # Start at 25% opacity, increase to 60% as you collect more
+            overlay_alpha = 0.25 + (collected / total_rocks) * 0.35
+            
+            # Load and resize background for overlay
+            try:
+                bg_overlay = cv2.imread(st.session_state.background_image, cv2.IMREAD_COLOR)
+                if bg_overlay is not None:
+                    bg_overlay = cv2.resize(bg_overlay, (frame.shape[1], frame.shape[0]))
+                    # Blend background with frame
+                    frame = cv2.addWeighted(frame, 1 - overlay_alpha, bg_overlay, overlay_alpha, 0)
+            except:
+                pass  # If background fails to load, continue without overlay
+        
+        # Drawing moonrocks
         for rx, ry in st.session_state.moonrocks:
             overlay_image(frame, moonrock_img, rx, ry)
 
