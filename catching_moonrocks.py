@@ -1,4 +1,4 @@
-## Moonrock Collector - AI-Powered Hand Tracking Game
+## Lunar Loot - AI-Powered Hand Tracking Game
 ## Created for Chroma Awards 2025
 ## Tools: Google MediaPipe, ElevenLabs, Freepik
 
@@ -13,7 +13,7 @@ import base64
 
 # Page configuration
 st.set_page_config(
-    page_title="Moonrock Collector - AI Game",
+    page_title="Lunar Loot - AI Game",
     page_icon="🌙",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -124,8 +124,8 @@ def display_start_screen():
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.title("🌙 Moonrock Collector Game")
-        st.markdown("### Collect the moonrocks before time runs out!")
+        st.title("🌙 Lunar Loot")
+        st.markdown("### Collect cosmic moonrocks before time runs out!")
         st.write("")
         st.write("**How to Play:**")
         st.write("👆 Use your index finger to touch the moonrocks")
@@ -208,7 +208,7 @@ def display_end_screen():
     st.write("")
     st.write("---")
     st.markdown("**Share your score!** 🎯")
-    st.write("Tag us: #ChromaAwards #MoonrockCollector")
+    st.write("Tag us: #ChromaAwards #LunarLoot")
     st.write("")
     st.markdown("🏆 *Submitted to [Chroma Awards 2025](https://www.chromaawards.com)*")
 
@@ -467,7 +467,7 @@ elif st.session_state.game_state == 'playing':
         cv2.putText(frame, f"Rocks: {len(st.session_state.moonrocks)}", (10, 150),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
-        image_placeholder.image(frame, channels="BGR", caption="Moonrock Collector", use_container_width=True)
+        image_placeholder.image(frame, channels="BGR", caption="Lunar Loot", use_container_width=True)
 
     # Game Over Handling if loop breaks
     if st.session_state.game_state == 'end':

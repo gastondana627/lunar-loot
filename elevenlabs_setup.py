@@ -37,14 +37,14 @@ sounds = {
     "level_14_makemake": "Level fourteen! Makemake, the distant dwarf planet. Journey to the edge of our solar system!",
     
     # Game events (9 total)
-    "welcome": "Welcome to Moonrock Collector! Use your hand to collect the moonrocks. Good luck!",
+    "welcome": "Welcome to Lunar Loot! Use your hand to collect the moonrocks. Good luck!",
     "collect_1": "Collected!",
     "collect_2": "Nice catch!",
     "collect_3": "Got it!",
     "level_complete": "Level complete! Excellent work! Get ready for the next challenge!",
     "time_warning_10": "Ten seconds remaining! Hurry!",
     "time_warning_5": "Five seconds left!",
-    "game_over": "Game over! Thanks for playing Moonrock Collector!",
+    "game_over": "Game over! Thanks for playing Lunar Loot!",
     "high_score": "New high score! You're a moonrock master!",
 }
 

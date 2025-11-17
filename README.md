@@ -1,8 +1,8 @@
-# Moonrock Collector - AI-Powered Hand Tracking Game
+# 🌙 Lunar Loot - AI-Powered Hand Tracking Game
 
 🎮 **Chroma Awards Submission - Experimental/Open Category**
 
-An interactive space-themed game where you collect moonrocks using hand gestures detected through your webcam!
+An interactive space-themed game where you collect cosmic moonrocks using hand gestures detected through your webcam! Hunt for lunar loot across the solar system!
 
 ## 🚀 Play Now
 

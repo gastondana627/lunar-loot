@@ -94,7 +94,7 @@ def create_space_selfie(frame, score, level, spacetag):
                 font, 1.2, (255, 255, 255), 3, cv2.LINE_AA)
     cv2.putText(selfie, f"Score: {score} | Level: {level}", (20, selfie.shape[0]-40),
                 font, 0.8, (100, 255, 255), 2, cv2.LINE_AA)
-    cv2.putText(selfie, "#MoonrockCollector #ChromaAwards", (20, selfie.shape[0]-10),
+    cv2.putText(selfie, "#LunarLoot #ChromaAwards", (20, selfie.shape[0]-10),
                 font, 0.6, (200, 200, 200), 1, cv2.LINE_AA)
     
     return selfie
