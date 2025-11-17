@@ -127,21 +127,39 @@ def display_start_screen():
         st.title("🌙 Lunar Loot")
         st.markdown("### Collect cosmic moonrocks before time runs out!")
         st.write("")
+        
+        # Spacetag entry
+        spacetag = st.text_input("🚀 Enter your Spacetag:", 
+                                 value=st.session_state.get('spacetag', ''),
+                                 max_chars=20,
+                                 placeholder="AstroHunter42",
+                                 help="Your gamer name for the leaderboard!")
+        if spacetag:
+            st.session_state.spacetag = spacetag
+        
+        st.write("")
         st.write("**How to Play:**")
         st.write("👆 Use your index finger to touch the moonrocks")
         st.write("⏱️ Collect all rocks before time runs out")
         st.write("🚀 Progress through levels with new space backgrounds")
+        st.write("⭐ Earn bonus points for speed and combos!")
         st.write("")
         st.info("💡 Make sure your webcam is enabled and you have good lighting!")
         st.write("")
         
         if st.button("🎮 Start Game", type="primary"):
-            # Before game starts, set the defaults
-            st.session_state.score = 0
-            st.session_state.level = 1
-            reset_level()  # Generate initial run
-            st.session_state.game_state = 'level_start'  # Transition to the level Start Screen
-            st.rerun()
+            if not st.session_state.get('spacetag'):
+                st.warning("⚠️ Please enter a Spacetag first!")
+            else:
+                # Before game starts, set the defaults
+                st.session_state.score = 0
+                st.session_state.level = 1
+                st.session_state.combo = 0
+                st.session_state.last_collect_time = 0
+                st.session_state.selfie_frame = None
+                reset_level()  # Generate initial run
+                st.session_state.game_state = 'level_start'  # Transition to the level Start Screen
+                st.rerun()
         
         st.write("")
         st.write("---")
@@ -181,35 +199,88 @@ def display_start_screen():
         """, unsafe_allow_html=True)
 
 def display_end_screen():
-    st.title("🎮 Game Over!")
-    st.write("")
-    st.markdown(f"### 🏆 Final Score: {st.session_state.score}")
-    st.markdown(f"### 🚀 Level Reached: {st.session_state.level}")
-    st.write("")
+    from enhanced_features import save_high_score, load_high_scores
     
-    # Score feedback
-    if st.session_state.score >= 30:
-        st.success("🌟 Amazing! You're a moonrock master!")
-    elif st.session_state.score >= 20:
-        st.success("⭐ Great job! Keep practicing!")
-    elif st.session_state.score >= 10:
-        st.info("👍 Good effort! Try again for a higher score!")
-    else:
-        st.info("💪 Keep trying! You'll get better!")
+    col1, col2 = st.columns([1, 1])
     
-    st.write("")
-    if st.button("🔄 Play Again", type="primary"):
-        # Reset the game
-        st.session_state.score = 0
-        st.session_state.level = 1
-        st.session_state.game_state = 'level_start'  # Transitions to level Start Screen
-        st.rerun()
+    with col1:
+        st.title("🎮 Game Over!")
+        st.write("")
+        st.markdown(f"### 👤 {st.session_state.spacetag}")
+        st.markdown(f"### 🏆 Final Score: {st.session_state.score}")
+        st.markdown(f"### 🚀 Level Reached: {st.session_state.level}")
+        st.write("")
+        
+        # Save high score
+        save_high_score(st.session_state.spacetag, st.session_state.score, st.session_state.level)
+        
+        # Score feedback
+        if st.session_state.score >= 100:
+            st.success("🌟 LEGENDARY! You're a lunar loot master!")
+        elif st.session_state.score >= 50:
+            st.success("⭐ Amazing! Keep up the great work!")
+        elif st.session_state.score >= 30:
+            st.info("👍 Good job! Try for a higher score!")
+        else:
+            st.info("💪 Keep practicing! You'll get better!")
+        
+        st.write("")
+        if st.button("🔄 Play Again", type="primary"):
+            # Reset the game
+            st.session_state.score = 0
+            st.session_state.level = 1
+            st.session_state.combo = 0
+            st.session_state.selfie_frame = None
+            st.session_state.game_state = 'start'
+            st.rerun()
+        
+        st.write("")
+        st.write("---")
+        st.markdown("**Share your score!** 🎯")
+        
+        # Social share buttons
+        tweet_text = f"I scored {st.session_state.score} points in Lunar Loot! 🌙 Can you beat my score?"
+        st.markdown(f"""
+        <a href="https://twitter.com/intent/tweet?text={tweet_text.replace(' ', '%20')}&hashtags=LunarLoot,ChromaAwards" 
+           target="_blank" style="text-decoration: none;">
+            <button style="background: #1DA1F2; color: white; border: none; padding: 10px 20px; 
+                           border-radius: 20px; cursor: pointer; font-size: 14px;">
+                🐦 Share on Twitter
+            </button>
+        </a>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        # Display space selfie if available
+        if st.session_state.get('selfie_frame') is not None:
+            st.markdown("### 📸 Your Space Selfie!")
+            st.image(st.session_state.selfie_frame, use_container_width=True)
+            
+            # Download button
+            import cv2
+            _, buffer = cv2.imencode('.jpg', st.session_state.selfie_frame)
+            st.download_button(
+                label="📥 Download Selfie",
+                data=buffer.tobytes(),
+                file_name=f"lunar_loot_{st.session_state.spacetag}.jpg",
+                mime="image/jpeg"
+            )
+        
+        # Leaderboard
+        st.write("")
+        st.markdown("### 🏆 Top Spacetags")
+        scores = load_high_scores()
+        if scores:
+            for i, entry in enumerate(scores[:10], 1):
+                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+                is_current = entry['spacetag'] == st.session_state.spacetag and entry['score'] == st.session_state.score
+                highlight = "**" if is_current else ""
+                st.write(f"{medal} {highlight}{entry['spacetag']}{highlight} - {entry['score']} pts (Lvl {entry['level']})")
+        else:
+            st.info("No high scores yet. Be the first!")
     
     st.write("")
     st.write("---")
-    st.markdown("**Share your score!** 🎯")
-    st.write("Tag us: #ChromaAwards #LunarLoot")
-    st.write("")
     st.markdown("🏆 *Submitted to [Chroma Awards 2025](https://www.chromaawards.com)*")
 
 
@@ -339,6 +410,17 @@ if 'video_height' not in st.session_state:
     st.session_state.video_height = 0
 if 'background_image_bytes' not in st.session_state:
     st.session_state.background_image_bytes = None
+# New features
+if 'spacetag' not in st.session_state:
+    st.session_state.spacetag = ""
+if 'combo' not in st.session_state:
+    st.session_state.combo = 0
+if 'last_collect_time' not in st.session_state:
+    st.session_state.last_collect_time = 0
+if 'selfie_frame' not in st.session_state:
+    st.session_state.selfie_frame = None
+if 'high_score' not in st.session_state:
+    st.session_state.high_score = 0
 
 #Added encoding
 if 'animation_bytes' not in st.session_state:
@@ -440,13 +522,40 @@ elif st.session_state.game_state == 'playing':
                 fx, fy = int(index_finger.x * st.session_state.video_width), int(index_finger.y * st.session_state.video_height)  # Capture video width and height from session state
                 mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-                # Collection logic
+                # Collection logic with combo system
                 for rock in list(st.session_state.moonrocks):  # Iterate over a copy
                     rx, ry = rock
                     if abs(fx - rx) < 30 and abs(fy - ry) < 30:
                         st.session_state.moonrocks.remove(rock)
-                        st.session_state.score += 1
+                        
+                        # Combo system
+                        current_time = time.time()
+                        time_since_last = current_time - st.session_state.last_collect_time
+                        
+                        if time_since_last < 2.0 and st.session_state.last_collect_time > 0:  # Within 2 seconds = combo
+                            st.session_state.combo += 1
+                        else:
+                            st.session_state.combo = 0
+                        
+                        # Calculate points
+                        base_points = 10
+                        combo_bonus = st.session_state.combo * 5
+                        total_points = base_points + combo_bonus
+                        
+                        st.session_state.score += total_points
+                        st.session_state.last_collect_time = current_time
+                        
                         if not st.session_state.moonrocks:  # Level Complete
+                            # Capture selfie frame
+                            from enhanced_features import create_space_selfie
+                            st.session_state.selfie_frame = create_space_selfie(
+                                frame, st.session_state.score, st.session_state.level, st.session_state.spacetag
+                            )
+                            
+                            # Time bonus
+                            time_bonus = int(remaining_time * 2)
+                            st.session_state.score += time_bonus
+                            
                             st.session_state.game_state = 'level_transition'  # Go to level transition
                             st.rerun()
                             break  # VERY IMPORTANT BREAK THE GAME OR IT WONT GET STUCK
@@ -456,16 +565,21 @@ elif st.session_state.game_state == 'playing':
             overlay_image(frame, moonrock_img, rx, ry)
 
         # Enhanced HUD with better styling
-        cv2.putText(frame, f"Score: {st.session_state.score}", (10, 30),
+        cv2.putText(frame, f"{st.session_state.spacetag}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (100, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(frame, f"Score: {st.session_state.score}", (10, 70),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(frame, f"Time: {int(remaining_time)}", (10, 70),
+        cv2.putText(frame, f"Time: {int(remaining_time)}", (10, 110),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(frame, f"Level: {st.session_state.level}", (10, 110),
+        cv2.putText(frame, f"Level: {st.session_state.level}", (10, 150),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(frame, f"Rocks: {len(st.session_state.moonrocks)}", (10, 190),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
         
-        # Add moonrocks remaining counter
-        cv2.putText(frame, f"Rocks: {len(st.session_state.moonrocks)}", (10, 150),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        # Show combo if active
+        if st.session_state.combo > 0:
+            cv2.putText(frame, f"COMBO x{st.session_state.combo + 1}!", (10, 230),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 100), 2, cv2.LINE_AA)
 
         image_placeholder.image(frame, channels="BGR", caption="Lunar Loot", use_container_width=True)
 
