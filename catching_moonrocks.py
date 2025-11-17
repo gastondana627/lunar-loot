@@ -874,6 +874,13 @@ elif st.session_state.game_state == 'playing':
             st.session_state.last_warning_time = 5
         
         if remaining_time == 0:
+            # Capture selfie before ending (if not already captured)
+            if st.session_state.get('selfie_frame') is None:
+                from enhanced_features import create_space_selfie
+                st.session_state.selfie_frame = create_space_selfie(
+                    frame, st.session_state.score, st.session_state.level, st.session_state.spacetag
+                )
+            
             # Check if they collected all moonrocks
             if len(st.session_state.moonrocks) > 0:
                 # Failed to collect all - offer retry
