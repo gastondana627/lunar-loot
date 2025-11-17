@@ -184,35 +184,93 @@ def reset_level():
         st.session_state.background_image = None
 
 def display_start_screen():
+    # Load and display main menu background
+    main_menu_bg = os.path.join(GAME_ROOT_DIR, "backgrounds", "Main_Menu", "Main_Menu_Start_Screen_BG.png")
+    if os.path.exists(main_menu_bg):
+        bg_bytes = convert_image_to_bytes(main_menu_bg)
+        if bg_bytes:
+            st.markdown(f"""
+                <style>
+                .main-menu-bg {{
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-image: url(data:image/png;base64,{bg_bytes.decode()});
+                    background-size: cover;
+                    background-position: center;
+                    z-index: -1;
+                }}
+                </style>
+                <div class="main-menu-bg"></div>
+            """, unsafe_allow_html=True)
+    
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.markdown('<h1 style="font-size: 3.5rem; margin-bottom: 0;">Lunar Loot</h1>', unsafe_allow_html=True)
-        st.markdown("### Collect cosmic moonrocks before time runs out")
-        st.write("")
+        # Enhanced title with better styling for background
+        st.markdown("""
+            <div style="background: rgba(10, 14, 39, 0.85); padding: 30px; border-radius: 12px; 
+                        border: 1px solid rgba(99, 102, 241, 0.3); backdrop-filter: blur(12px);
+                        margin-bottom: 20px;">
+                <h1 style="font-size: 3.5rem; margin: 0; color: #f8fafc; 
+                           text-shadow: 0 0 20px rgba(99, 102, 241, 0.8);">
+                    Lunar Loot
+                </h1>
+                <p style="font-size: 1.25rem; color: #cbd5e1; margin: 10px 0 0 0;">
+                    Collect cosmic moonrocks before time runs out
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
         
-        # Spacetag entry
+        # Spacetag entry with enhanced styling
+        st.markdown('<p style="color: #e2e8f0; font-weight: 600; margin-bottom: 8px;">Enter your Spacetag</p>', 
+                    unsafe_allow_html=True)
         spacetag = st.text_input("Enter your Spacetag", 
                                  value=st.session_state.get('spacetag', ''),
                                  max_chars=20,
                                  placeholder="AstroHunter42",
-                                 help="Your pilot callsign for the leaderboard")
+                                 help="Your pilot callsign for the leaderboard",
+                                 label_visibility="collapsed")
         if spacetag:
             st.session_state.spacetag = spacetag
         
         st.write("")
-        st.markdown("**Mission Objectives:**")
-        st.write("• Use your index finger to touch the moonrocks")
-        st.write("• Collect all rocks before time runs out")
-        st.write("• Progress through levels with new space environments")
-        st.write("• Earn bonus points for speed and combos")
-        st.write("")
-        st.info("⚠️ Camera Required: This game uses your webcam for hand tracking. Please grant camera permissions when prompted by your browser.")
-        st.write("")
-        st.markdown("**Browser Compatibility:**")
-        st.write("• Chrome (Recommended)")
-        st.write("• Firefox")
-        st.write("• Edge")
+        
+        # Mission objectives in styled box
+        st.markdown("""
+            <div style="background: rgba(10, 14, 39, 0.85); padding: 20px; border-radius: 12px; 
+                        border: 1px solid rgba(99, 102, 241, 0.3); backdrop-filter: blur(12px);
+                        margin: 20px 0;">
+                <p style="color: #f8fafc; font-weight: 600; font-size: 1.1rem; margin-bottom: 12px;">
+                    Mission Objectives:
+                </p>
+                <p style="color: #cbd5e1; line-height: 1.8; margin: 0;">
+                    • Use your index finger to touch the moonrocks<br>
+                    • Collect all rocks before time runs out<br>
+                    • Progress through levels with new space environments<br>
+                    • Earn bonus points for speed and combos
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Camera warning
+        st.info("Camera Required: This game uses your webcam for hand tracking. Please grant camera permissions when prompted.")
+        
+        # Browser compatibility
+        st.markdown("""
+            <div style="background: rgba(10, 14, 39, 0.7); padding: 15px; border-radius: 8px; 
+                        border-left: 3px solid #6366f1; margin: 15px 0;">
+                <p style="color: #e2e8f0; font-weight: 600; margin-bottom: 8px;">Browser Compatibility:</p>
+                <p style="color: #cbd5e1; margin: 0; line-height: 1.6;">
+                    • Chrome (Recommended)<br>
+                    • Firefox<br>
+                    • Edge
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
         st.write("")
         
         if st.button("Launch Mission", type="primary"):
@@ -239,20 +297,27 @@ def display_start_screen():
         st.markdown("*Created for [Chroma Awards 2025](https://www.chromaawards.com)*")
     
     with col2:
-        st.markdown("### Hand Gesture Controls")
         st.markdown("""
-        <div style="background: rgba(15, 23, 42, 0.8); padding: 24px; border-radius: 8px; 
+        <div style="background: rgba(10, 14, 39, 0.85); padding: 24px; border-radius: 12px; 
                     border: 1px solid rgba(99, 102, 241, 0.3); backdrop-filter: blur(12px);">
-            <h3 style="color: #e2e8f0; font-size: 1.25rem; margin-bottom: 16px;">Control System</h3>
-            <p style="font-size: 16px; color: #cbd5e1; line-height: 1.8;">
-                <strong style="color: #f8fafc;">Step 1:</strong> Show your hand to the camera<br>
-                <strong style="color: #f8fafc;">Step 2:</strong> Point with your index finger<br>
-                <strong style="color: #f8fafc;">Step 3:</strong> Touch moonrocks to collect
-            </p>
-            <div style="background: rgba(99, 102, 241, 0.15); padding: 16px; border-radius: 6px; 
-                        margin-top: 16px; border-left: 3px solid #6366f1;">
-                <p style="font-size: 14px; margin: 0; color: #e2e8f0;"><strong>Pro Tips</strong></p>
-                <p style="font-size: 13px; color: #cbd5e1; margin: 8px 0 0 0; line-height: 1.6;">
+            <h3 style="color: #f8fafc; font-size: 1.5rem; margin-bottom: 20px; 
+                       text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);">
+                Hand Gesture Controls
+            </h3>
+            
+            <div style="margin-bottom: 20px;">
+                <p style="color: #e2e8f0; font-weight: 600; margin-bottom: 12px;">Control System</p>
+                <p style="font-size: 16px; color: #cbd5e1; line-height: 2;">
+                    <strong style="color: #6366f1;">Step 1:</strong> Show your hand to the camera<br>
+                    <strong style="color: #6366f1;">Step 2:</strong> Point with your index finger<br>
+                    <strong style="color: #6366f1;">Step 3:</strong> Touch moonrocks to collect
+                </p>
+            </div>
+            
+            <div style="background: rgba(99, 102, 241, 0.15); padding: 16px; border-radius: 8px; 
+                        border-left: 3px solid #6366f1;">
+                <p style="font-size: 14px; margin: 0 0 10px 0; color: #f8fafc; font-weight: 600;">Pro Tips</p>
+                <p style="font-size: 13px; color: #cbd5e1; margin: 0; line-height: 1.8;">
                     • Maintain hand visibility in frame<br>
                     • Ensure adequate ambient lighting<br>
                     • Use smooth, deliberate movements
@@ -261,17 +326,24 @@ def display_start_screen():
         </div>
         """, unsafe_allow_html=True)
         
-        # Visual demo placeholder
+        st.write("")
+        
+        # Visual demo with enhanced styling
         st.markdown("""
         <div style="background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%); 
-                    padding: 60px 20px; border-radius: 8px; text-align: center; margin-top: 20px;
-                    border: 1px solid rgba(255, 255, 255, 0.1);">
+                    padding: 50px 20px; border-radius: 12px; text-align: center; margin-top: 20px;
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4);">
             <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                 <path d="M9 11l3 3L22 4"></path>
                 <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
             </svg>
-            <p style="font-size: 20px; color: white; margin: 16px 0 8px 0; font-weight: 600;">Point & Collect</p>
-            <p style="font-size: 14px; color: rgba(255,255,255,0.9); margin: 0;">Real-time AI hand tracking</p>
+            <p style="font-size: 22px; color: white; margin: 20px 0 8px 0; font-weight: 700;">
+                Point & Collect
+            </p>
+            <p style="font-size: 14px; color: rgba(255,255,255,0.95); margin: 0;">
+                Real-time AI hand tracking
+            </p>
         </div>
         """, unsafe_allow_html=True)
 
