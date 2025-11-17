@@ -14,7 +14,7 @@ import base64
 # Page configuration
 st.set_page_config(
     page_title="Lunar Loot - AI Game",
-    page_icon="🌙",
+    page_icon="🌑",  # Simple moon icon
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -23,7 +23,7 @@ st.set_page_config(
 st.markdown("""
     <script>
     if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-        document.body.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0e27; color: white; text-align: center; padding: 20px;"><div><h1>🌙 Lunar Loot</h1><p style="font-size: 18px; margin: 20px 0;">This game requires a desktop computer with a webcam for hand tracking.</p><p>Please visit on a desktop browser:</p><p style="color: #6366f1;">• Chrome (Recommended)<br>• Firefox<br>• Edge</p></div></div>';
+        document.body.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0e27; color: white; text-align: center; padding: 20px;"><div><h1>LUNAR LOOT</h1><p style="font-size: 18px; margin: 20px 0;">This game requires a desktop computer with a webcam for hand tracking.</p><p>Please visit on a desktop browser:</p><p style="color: #6366f1;">• Chrome (Recommended)<br>• Firefox<br>• Edge</p></div></div>';
     }
     </script>
 """, unsafe_allow_html=True)
@@ -31,6 +31,14 @@ st.markdown("""
 # Custom CSS for sophisticated space-themed UI
 st.markdown("""
     <style>
+    /* Import Orbitron space font */
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;900&display=swap');
+    
+    /* Apply font globally */
+    html, body, [class*="css"], * {
+        font-family: 'Orbitron', sans-serif !important;
+    }
+    
     /* Hide Streamlit branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -382,7 +390,43 @@ def display_start_screen():
         
         st.write("")
         
-        if st.button("Launch Mission", type="primary"):
+        # Custom Launch Mission button with image
+        try:
+            import base64
+            button_path = "ui_assets/buttons/Lunar_ Loot_Button.png"
+            with open(button_path, 'rb') as f:
+                button_img = base64.b64encode(f.read()).decode()
+            
+            st.markdown(f"""
+                <style>
+                .launch-btn {{
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    display: block;
+                    margin: 20px auto;
+                    max-width: 400px;
+                }}
+                .launch-btn:hover {{
+                    transform: translateY(-3px);
+                    filter: brightness(1.2);
+                }}
+                .launch-btn:active {{
+                    transform: translateY(2px) scale(0.98);
+                    filter: brightness(0.9);
+                }}
+                .launch-btn img {{
+                    width: 100%;
+                    height: auto;
+                }}
+                </style>
+                <div class="launch-btn">
+                    <img src="data:image/png;base64,{button_img}" alt="Launch Mission">
+                </div>
+            """, unsafe_allow_html=True)
+        except:
+            pass  # Fallback to regular button if image not found
+        
+        if st.button("▶ START MISSION", type="primary", use_container_width=True):
             if not st.session_state.get('spacetag'):
                 st.warning("Please enter a Spacetag to begin")
             else:
@@ -495,7 +539,7 @@ def display_end_screen():
         
         # Show high score badge if applicable
         if is_high_score:
-            st.success("🏆 NEW HIGH SCORE! 🏆")
+            st.success("★ NEW HIGH SCORE ★")
         
         # Score feedback
         if st.session_state.score >= 100:
@@ -508,7 +552,23 @@ def display_end_screen():
             st.info("TRAINING COMPLETE — Practice makes perfect")
         
         st.write("")
-        if st.button("New Mission", type="primary"):
+        
+        # Custom New Mission button
+        try:
+            import base64
+            button_path = "ui_assets/buttons/Mission_Button.png"
+            with open(button_path, 'rb') as f:
+                button_img = base64.b64encode(f.read()).decode()
+            
+            st.markdown(f"""
+                <div class="launch-btn">
+                    <img src="data:image/png;base64,{button_img}" alt="New Mission">
+                </div>
+            """, unsafe_allow_html=True)
+        except:
+            pass
+        
+        if st.button("▶ NEW MISSION", type="primary", use_container_width=True):
             # Reset the game completely and release camera
             if 'cap' in st.session_state:
                 try:
@@ -543,14 +603,14 @@ def display_end_screen():
     with col2:
         # Display space selfie if available
         if st.session_state.get('selfie_frame') is not None:
-            st.markdown("### 📸 Mission Snapshot")
+            st.markdown("### ▶ Mission Snapshot")
             st.image(st.session_state.selfie_frame, use_container_width=True)
             
             # Download button
             import cv2
             _, buffer = cv2.imencode('.jpg', st.session_state.selfie_frame)
             st.download_button(
-                label="💾 Download Snapshot",
+                label="↓ Download Snapshot",
                 data=buffer.tobytes(),
                 file_name=f"lunar_loot_{st.session_state.spacetag}.jpg",
                 mime="image/jpeg",
@@ -558,11 +618,11 @@ def display_end_screen():
             )
         else:
             # Debug: Show why selfie isn't available
-            st.info("📷 No snapshot captured - complete at least one level to get your mission photo!")
+            st.info("○ No snapshot captured - complete at least one level to get your mission photo!")
         
         # Leaderboard
         st.write("")
-        st.markdown("### 🏆 Top Pilots")
+        st.markdown("### ★ Top Pilots")
         scores = load_high_scores()
         if scores:
             medals = ["1st", "2nd", "3rd"]
@@ -576,7 +636,7 @@ def display_end_screen():
     
     st.write("")
     st.write("---")
-    st.markdown("🏆 *Submitted to [Chroma Awards 2025](https://www.chromaawards.com)*")
+    st.markdown("★ *Submitted to [Chroma Awards 2025](https://www.chromaawards.com)*")
 
 
 def display_level_transition_animation():
@@ -591,14 +651,14 @@ def display_level_transition_animation():
                         text-align: center;">
         """, unsafe_allow_html=True)
         
-        st.markdown(f"<h1 style='color: #22c55e; margin: 0 0 20px 0;'>🎉 Level {st.session_state.level} Complete!</h1>", unsafe_allow_html=True)
+        st.markdown(f"<h1 style='color: #22c55e; margin: 0 0 20px 0;'>★ Level {st.session_state.level} Complete!</h1>", unsafe_allow_html=True)
         st.markdown(f"<p style='color: #f8fafc; font-size: 20px; margin: 10px 0;'><strong>Score:</strong> {st.session_state.score}</p>", unsafe_allow_html=True)
         
         if st.session_state.combo > 0:
             st.markdown(f"<p style='color: #22c55e; font-size: 18px; margin: 10px 0;'>Maximum Combo: x{st.session_state.combo + 1}</p>", unsafe_allow_html=True)
         
         st.write("")
-        st.info("🚀 Preparing next sector...")
+        st.info("▶ Preparing next sector...")
         st.markdown("</div>", unsafe_allow_html=True)
         
         # Animation if available
@@ -648,7 +708,22 @@ def display_level_start_screen():
         st.info("Tip: Collect moonrocks quickly to build combo multipliers")
         st.write("")
         
-        if st.button("Begin Mission", type="primary", use_container_width=True):
+        # Custom Begin Mission button
+        try:
+            import base64
+            button_path = "ui_assets/buttons/Begin_Mission.png"
+            with open(button_path, 'rb') as f:
+                button_img = base64.b64encode(f.read()).decode()
+            
+            st.markdown(f"""
+                <div class="launch-btn">
+                    <img src="data:image/png;base64,{button_img}" alt="Begin Mission">
+                </div>
+            """, unsafe_allow_html=True)
+        except:
+            pass
+        
+        if st.button("▶ BEGIN MISSION", type="primary", use_container_width=True):
             st.session_state.game_state = 'playing'  # Now start the level
             st.session_state.start_time = time.time()  # Resets time
             st.rerun()
@@ -851,7 +926,7 @@ elif st.session_state.game_state == 'playing':
         if not ret:
             st.warning("End of stream or error reading frame.")
             st.session_state.game_state = 'end'
-            break
+            st.rerun()
 
         frame = cv2.flip(frame, 1)
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -888,7 +963,9 @@ elif st.session_state.game_state == 'playing':
             else:
                 # Time ran out but all collected
                 st.session_state.game_state = 'end'
-            break
+            
+            # CRITICAL: Rerun to show the next screen
+            st.rerun()
 
         if result.multi_hand_landmarks:
             for hand_landmarks in result.multi_hand_landmarks:
