@@ -23,6 +23,11 @@ Thumbs.db
 # Streamlit
 .streamlit/secrets.toml
 
-# Audio cache (if generated)
-*.mp3
+# Environment variables (IMPORTANT - keeps API keys safe)
+.env
+*.env
+
+# Audio cache (temporary files only, not the sounds folder)
+# Note: sounds/ folder MP3s should be committed
+temp_audio/
 *.wav
