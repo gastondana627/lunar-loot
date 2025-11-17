@@ -88,9 +88,9 @@ def create_space_selfie(frame, score, level, spacetag):
                   (0, 0, 0), -1)
     cv2.addWeighted(overlay, 0.7, selfie, 0.3, 0, selfie)
     
-    # Add text
-    font = cv2.FONT_HERSHEY_BOLD
-    cv2.putText(selfie, f"🌙 {spacetag}", (20, selfie.shape[0]-80),
+    # Add text (use FONT_HERSHEY_SIMPLEX which is always available)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(selfie, f"{spacetag}", (20, selfie.shape[0]-80),
                 font, 1.2, (255, 255, 255), 3, cv2.LINE_AA)
     cv2.putText(selfie, f"Score: {score} | Level: {level}", (20, selfie.shape[0]-40),
                 font, 0.8, (100, 255, 255), 2, cv2.LINE_AA)

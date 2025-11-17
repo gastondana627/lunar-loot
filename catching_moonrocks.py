@@ -73,7 +73,7 @@ ANIMATION_DURATION = 5  # Seconds
 
 # --- Find the root directory of the game ---
 GAME_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-BACKGROUND_IMAGE_DIR = os.path.join(GAME_ROOT_DIR, "backgrounds")
+BACKGROUND_IMAGE_DIR = os.path.join(GAME_ROOT_DIR, "backgrounds", "New_Background_Rotation_1")
 ANIMATION_DIR = os.path.join(GAME_ROOT_DIR, "animations")
 
 # --- Helper Functions ---
@@ -93,8 +93,8 @@ def get_background_images(directory):
     """Returns a list of paths to background images in the specified directory."""
     try:
         image_files = [os.path.join(directory, f) for f in os.listdir(directory)
-                       if f.endswith(('.jpg', '.jpeg', '.png'))]
-        return image_files
+                       if f.endswith(('.jpg', '.jpeg', '.png')) and not f.startswith('.')]
+        return sorted(image_files)  # Sort for consistent order
     except FileNotFoundError:
         st.error(f"Directory '{directory}' not found. Make sure it exists and contains background images.")
         return []
@@ -286,23 +286,48 @@ def display_end_screen():
 
 def display_level_transition_animation():
     """Displays a level transition animation using HTML5 video tag with autoplay."""
-    st.title("Level Complete!")
+    
+    # Enhanced level complete screen
+    st.markdown("""
+        <style>
+        .level-complete {
+            text-align: center;
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            margin: 20px 0;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown('<div class="level-complete">', unsafe_allow_html=True)
+        st.title("🎉 Level Complete!")
+        st.markdown(f"### Level {st.session_state.level}")
+        st.markdown(f"**Score: {st.session_state.score}**")
+        
+        if st.session_state.combo > 0:
+            st.success(f"🔥 Max Combo: x{st.session_state.combo + 1}!")
+        
+        st.write("")
+        st.write("🚀 Preparing next level...")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     if 'animation_bytes' in st.session_state:
         video_html = f"""
-        <video width="640" height="480" autoplay muted loop>
-            <source src="data:video/mp4;base64,{st.session_state.animation_bytes.decode()}" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
+        <div style="text-align: center; margin: 20px 0;">
+            <video width="400" height="300" autoplay muted loop style="border-radius: 15px;">
+                <source src="data:video/mp4;base64,{st.session_state.animation_bytes.decode()}" type="video/mp4">
+            </video>
+        </div>
         """
         st.markdown(video_html, unsafe_allow_html=True)
-    else:
-        st.error("Animation bytes not loaded. Check your setup.")
-        return
 
-    time.sleep(ANIMATION_DURATION)  # Wait for the animation to finish
+    time.sleep(3)  # Shorter wait time
 
     st.session_state.level += 1  # Increment level counter
+    st.session_state.combo = 0  # Reset combo for new level
     st.session_state.game_state = 'level_start'  # Go to the level Start Screen
     reset_level()
     st.rerun()
@@ -312,24 +337,42 @@ def display_level_start_screen():
     """Displays the level start screen with the background and 'Begin Game' button."""
     if 'background_image_bytes' in st.session_state and st.session_state.background_image_bytes is not None:
         full_screen_background(st.session_state.background_image_bytes)
-    else:
-        st.write("Loading Background Image")
-
+    
     # Add simple background music
     st.markdown("""
-        <audio autoplay loop>
+        <audio autoplay loop volume="0.3">
             <source src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3" type="audio/mpeg">
         </audio>
     """, unsafe_allow_html=True)
 
-    st.title(f"🚀 Level {st.session_state.level}")  # Display the level
-
-    st.write("Get ready to collect those moonrocks!")
-
-    if st.button("Begin Game"):
-        st.session_state.game_state = 'playing'  # Now start the level
-        st.session_state.start_time = time.time()  # Resets time
-        st.rerun()  # Rerun
+    # Enhanced level start screen
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+            <div style="background: rgba(0,0,0,0.8); padding: 40px; border-radius: 20px; 
+                        text-align: center; backdrop-filter: blur(10px);">
+        """, unsafe_allow_html=True)
+        
+        st.title(f"🚀 Level {st.session_state.level}")
+        
+        # Get background name for display
+        if st.session_state.background_image:
+            bg_name = os.path.basename(st.session_state.background_image).replace('_1.png', '').replace('_', ' ')
+            st.markdown(f"### 🌌 {bg_name}")
+        
+        st.write("")
+        st.markdown(f"**Current Score: {st.session_state.score}**")
+        st.markdown(f"**Spacetag: {st.session_state.spacetag}**")
+        st.write("")
+        st.info("💡 Collect moonrocks quickly for combo bonuses!")
+        st.write("")
+        
+        if st.button("▶️ Begin Game", type="primary", use_container_width=True):
+            st.session_state.game_state = 'playing'  # Now start the level
+            st.session_state.start_time = time.time()  # Resets time
+            st.rerun()
+        
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 # --- Streamlit Full Screen Background Component ---
