@@ -1,24 +1,15 @@
-## Lunar Loot - WebRTC Production Version V2
+## Lunar Loot - JavaScript MediaPipe Version
 ## Created for Chroma Awards 2025
 ## Tools: Google MediaPipe, Freepik, Adobe
-## IMPROVED: Better ICE server configuration for production
+## BREAKTHROUGH: Client-side hand tracking - NO SERVER CONNECTION NEEDED!
 
-import cv2
-import mediapipe as mp
-import numpy as np
-import random
-import os
 import streamlit as st
-import time
-import base64
-from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration, VideoProcessorBase
-import av
-import logging
 import streamlit.components.v1 as components
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+import os
+import base64
+import time
+import random
+import json
 
 # Page configuration
 st.set_page_config(
@@ -32,26 +23,6 @@ st.set_page_config(
 LEVEL_TIME_LIMIT = 30
 NUM_MOONROCKS = 5
 GAME_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-BACKGROUND_IMAGE_DIR = os.path.join(GAME_ROOT_DIR, "backgrounds", "New_Background_Rotation_1")
-
-# Enhanced WebRTC Configuration with multiple TURN servers
-RTC_CONFIGURATION = RTCConfiguration({
-    "iceServers": [
-        # Google STUN servers
-        {"urls": ["stun:stun.l.google.com:19302"]},
-        {"urls": ["stun:stun1.l.google.com:19302"]},
-        {"urls": ["stun:stun2.l.google.com:19302"]},
-        # Public TURN servers
-        {"urls": ["turn:openrelay.metered.ca:80"], "username": "openrelayproject", "credential": "openrelayproject"},
-        {"urls": ["turn:openrelay.metered.ca:443"], "username": "openrelayproject", "credential": "openrelayproject"},
-        {"urls": ["turn:openrelay.metered.ca:443?transport=tcp"], "username": "openrelayproject", "credential": "openrelayproject"},
-    ],
-    "iceTransportPolicy": "all",  # Try all connection methods
-})
-
-# Initialize MediaPipe
-mp_hands = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
 
 # Sector names
 SECTOR_NAMES = {
@@ -59,15 +30,6 @@ SECTOR_NAMES = {
     6: "Jupiter", 7: "Neptune", 8: "Uranus", 9: "Pluto", 10: "Asteroid Belt",
     11: "Comet", 12: "Nebula", 13: "Black Hole", 14: "Spaceship"
 }
-
-# Helper functions
-def get_background_images(directory):
-    try:
-        image_files = [os.path.join(directory, f) for f in os.listdir(directory)
-                       if f.endswith(('.jpg', '.jpeg', '.png')) and not f.startswith('.')]
-        return sorted(image_files)
-    except:
-        return []
 
 def load_logo():
     logo_path = os.path.join(GAME_ROOT_DIR, "ui_assets", "branding", "Lunar_Loot_Logo.png")
@@ -82,196 +44,19 @@ def load_logo():
 def convert_image_to_bytes(image_path):
     try:
         with open(image_path, 'rb') as f:
-            return base64.b64encode(f.read())
+            return base64.b64encode(f.read()).decode()
     except:
         return None
 
-# Session state initialization
+# Session state
 if 'game_state' not in st.session_state:
     st.session_state.game_state = 'title'
 if 'score' not in st.session_state:
     st.session_state.score = 0
 if 'level' not in st.session_state:
     st.session_state.level = 1
-if 'moonrocks' not in st.session_state:
-    st.session_state.moonrocks = []
-if 'start_time' not in st.session_state:
-    st.session_state.start_time = time.time()
 if 'spacetag' not in st.session_state:
     st.session_state.spacetag = ''
-if 'peace_last_trigger' not in st.session_state:
-    st.session_state.peace_last_trigger = 0
-if 'combo' not in st.session_state:
-    st.session_state.combo = 0
-if 'last_collect_time' not in st.session_state:
-    st.session_state.last_collect_time = 0
-if 'background_image_bytes' not in st.session_state:
-    st.session_state.background_image_bytes = None
-
-def reset_level():
-    """Reset level with new moonrocks and background"""
-    st.session_state.moonrocks = []
-    num_rocks = NUM_MOONROCKS + st.session_state.level
-    for _ in range(num_rocks):
-        st.session_state.moonrocks.append({
-            'x': random.randint(50, 590),
-            'y': random.randint(50, 430),
-            'collected': False
-        })
-    st.session_state.start_time = time.time()
-    st.session_state.combo = 0
-    st.session_state.last_collect_time = 0
-    
-    # Load background
-    bg_files = get_background_images(BACKGROUND_IMAGE_DIR)
-    if bg_files and st.session_state.level <= len(bg_files):
-        st.session_state.background_image_bytes = convert_image_to_bytes(bg_files[st.session_state.level - 1])
-
-def full_screen_background(image_bytes):
-    if image_bytes:
-        st.markdown(f"""
-            <style>
-            .stApp {{
-                background-image: url(data:image/jpg;base64,{image_bytes.decode()});
-                background-size: cover;
-                background-position: center;
-                background-attachment: fixed;
-            }}
-            </style>
-        """, unsafe_allow_html=True)
-
-# Video Processor for WebRTC - OPTIMIZED
-class VideoProcessor(VideoProcessorBase):
-    def __init__(self):
-        self.hands = mp_hands.Hands(
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-            max_num_hands=1  # Only track one hand for better performance
-        )
-        self.frame_count = 0
-        
-    def recv(self, frame):
-        try:
-            img = frame.to_ndarray(format="bgr24")
-            img = cv2.flip(img, 1)
-            
-            # Only process if playing
-            if st.session_state.game_state != 'playing':
-                return av.VideoFrame.from_ndarray(img, format="bgr24")
-            
-            # Apply background blend
-            if st.session_state.background_image_bytes:
-                try:
-                    bg_data = base64.b64decode(st.session_state.background_image_bytes)
-                    bg_array = np.frombuffer(bg_data, dtype=np.uint8)
-                    bg_img = cv2.imdecode(bg_array, cv2.IMREAD_COLOR)
-                    if bg_img is not None:
-                        bg_img = cv2.resize(bg_img, (img.shape[1], img.shape[0]))
-                        img = cv2.addWeighted(img, 0.3, bg_img, 0.7, 0)
-                except Exception as e:
-                    logger.error(f"Background blend error: {e}")
-            
-            # Draw moonrocks
-            for rock in st.session_state.moonrocks:
-                if not rock['collected']:
-                    cv2.circle(img, (rock['x'], rock['y']), 30, (255, 192, 203), -1)  # Pink moonrocks
-                    cv2.circle(img, (rock['x'], rock['y']), 32, (255, 105, 180), 3)  # Hot pink border
-            
-            # Process with MediaPipe
-            rgb_frame = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            result = self.hands.process(rgb_frame)
-            
-            if result.multi_hand_landmarks:
-                for hand_landmarks in result.multi_hand_landmarks:
-                    # Draw hand skeleton
-                    mp_drawing.draw_landmarks(
-                        img, hand_landmarks, mp_hands.HAND_CONNECTIONS,
-                        mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=3),
-                        mp_drawing.DrawingSpec(color=(255, 255, 255), thickness=2)
-                    )
-                    
-                    # Get index finger tip
-                    index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-                    h, w, _ = img.shape
-                    finger_x = int(index_tip.x * w)
-                    finger_y = int(index_tip.y * h)
-                    
-                    # Draw finger indicator
-                    cv2.circle(img, (finger_x, finger_y), 20, (34, 197, 94), -1)
-                    cv2.circle(img, (finger_x, finger_y), 22, (255, 255, 255), 2)
-                    
-                    # Collision detection
-                    current_time = time.time()
-                    for rock in st.session_state.moonrocks:
-                        if not rock['collected']:
-                            dist = np.sqrt((finger_x - rock['x'])**2 + (finger_y - rock['y'])**2)
-                            if dist < 50:
-                                rock['collected'] = True
-                                if current_time - st.session_state.last_collect_time < 2.0:
-                                    st.session_state.combo += 1
-                                else:
-                                    st.session_state.combo = 0
-                                points = 10 * (st.session_state.combo + 1)
-                                st.session_state.score += points
-                                st.session_state.last_collect_time = current_time
-                    
-                    # Easter egg - Peace sign
-                    index_pip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_PIP]
-                    middle_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
-                    middle_pip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_PIP]
-                    ring_tip = hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_TIP]
-                    ring_mcp = hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_MCP]
-                    pinky_tip = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP]
-                    pinky_mcp = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_MCP]
-                    
-                    index_extended = index_tip.y < index_pip.y
-                    middle_extended = middle_tip.y < middle_pip.y
-                    ring_curled = ring_tip.y > ring_mcp.y
-                    pinky_curled = pinky_tip.y > pinky_mcp.y
-                    
-                    if (index_extended and middle_extended and ring_curled and pinky_curled and
-                        current_time - st.session_state.peace_last_trigger > 5.0):
-                        st.session_state.score += 50
-                        st.session_state.peace_last_trigger = current_time
-                        cv2.putText(img, "PEACE! +50", (w//2 - 100, h//2), 
-                                  cv2.FONT_HERSHEY_DUPLEX, 2, (34, 197, 94), 3)
-            
-            # Draw UI overlay
-            elapsed = time.time() - st.session_state.start_time
-            remaining = max(0, LEVEL_TIME_LIMIT - elapsed)
-            
-            # Score and time
-            cv2.putText(img, f"Score: {st.session_state.score}", (10, 30),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-            cv2.putText(img, f"Time: {int(remaining)}s", (10, 70),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-            cv2.putText(img, f"Level: {st.session_state.level}", (10, 110),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-            
-            # Combo display
-            if st.session_state.combo > 0:
-                cv2.putText(img, f"COMBO x{st.session_state.combo + 1}!", (10, 150),
-                           cv2.FONT_HERSHEY_SIMPLEX, 1, (34, 197, 94), 2)
-            
-            # Rocks remaining
-            rocks_left = sum(1 for r in st.session_state.moonrocks if not r['collected'])
-            cv2.putText(img, f"Rocks: {rocks_left}", (10, 190),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-            
-            # Check win/lose conditions
-            if remaining <= 0:
-                if all(r['collected'] for r in st.session_state.moonrocks):
-                    st.session_state.game_state = 'level_complete'
-                else:
-                    st.session_state.game_state = 'level_failed'
-            elif all(r['collected'] for r in st.session_state.moonrocks):
-                st.session_state.game_state = 'level_complete'
-            
-            return av.VideoFrame.from_ndarray(img, format="bgr24")
-            
-        except Exception as e:
-            logger.error(f"Video processing error: {e}")
-            return av.VideoFrame.from_ndarray(img, format="bgr24")
 
 # Custom CSS
 st.markdown("""
@@ -292,58 +77,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Chroma Awards footer
-chroma_footer_path = os.path.join(GAME_ROOT_DIR, "backgrounds", "Main_Menu", "Footer_Chroma_Awards.mp4")
-if os.path.exists(chroma_footer_path):
-    try:
-        with open(chroma_footer_path, 'rb') as video_file:
-            footer_video_bytes = base64.b64encode(video_file.read()).decode()
-            st.markdown(f"""
-                <a href="https://www.chromaawards.com" target="_blank" style="text-decoration: none;">
-                    <div style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 9998; 
-                                background: rgba(0,0,0,0.9); box-shadow: 0 -4px 12px rgba(0,0,0,0.5);">
-                        <video width="100%" height="50" autoplay loop muted playsinline>
-                            <source src="data:video/mp4;base64,{footer_video_bytes}" type="video/mp4">
-                        </video>
-                    </div>
-                </a>
-            """, unsafe_allow_html=True)
-    except:
-        pass
-
-# Music button
-components.html("""
-    <div style="position: fixed; bottom: 60px; left: 10px; z-index: 10000;">
-        <button id="musicBtn" style="
-            background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%; width: 50px; height: 50px;
-            cursor: pointer; font-size: 20px;">🎵</button>
-    </div>
-    <audio id="bgMusic" loop>
-        <source src="https://assets.mixkit.co/active_storage/sfx/2745/2745-preview.mp3" type="audio/mpeg">
-    </audio>
-    <script>
-        var music = document.getElementById('bgMusic');
-        var btn = document.getElementById('musicBtn');
-        var playing = false;
-        btn.onclick = function() {
-            if (playing) { music.pause(); btn.innerHTML = '🔇'; playing = false; }
-            else { music.volume = 0.3; music.play(); btn.innerHTML = '🎵'; playing = true; }
-        };
-    </script>
-""", height=0)
-
-# ==================== GAME STATES ====================
-
 # Title Screen
 if st.session_state.game_state == 'title':
-    main_menu_bg = os.path.join(GAME_ROOT_DIR, "backgrounds", "Main_Menu", "Main_Menu_Start_Screen_BG.png")
-    if os.path.exists(main_menu_bg):
-        bg_bytes = convert_image_to_bytes(main_menu_bg)
-        if bg_bytes:
-            full_screen_background(bg_bytes)
-    
     col1, col2 = st.columns([1, 1])
     with col1:
         logo_bytes = load_logo()
@@ -363,6 +98,8 @@ if st.session_state.game_state == 'title':
         if spacetag:
             st.session_state.spacetag = spacetag
         
+        st.success("🚀 **BREAKTHROUGH VERSION:** Uses JavaScript MediaPipe - runs entirely in YOUR browser!")
+        
         st.markdown("""
             <div style="background: rgba(10, 14, 39, 0.85); padding: 20px; border-radius: 12px; 
                         border: 1px solid rgba(99, 102, 241, 0.3); margin: 20px 0;">
@@ -373,49 +110,16 @@ if st.session_state.game_state == 'title':
                     • Use your index finger to touch the moonrocks<br>
                     • Collect all rocks before time runs out<br>
                     • Progress through 14 space environments<br>
-                    • Find hidden gesture bonuses (peace sign +50!)
+                    • Find hidden gesture bonuses!
                 </p>
             </div>
         """, unsafe_allow_html=True)
         
-        st.success("🚀 **WebRTC Enabled** - Real-time camera streaming with enhanced connection!")
-        
         if st.button("🚀 START GAME", type="primary", use_container_width=True):
-            reset_level()
-            st.session_state.game_state = 'level_start'
-            st.rerun()
-
-# Level Start Screen
-elif st.session_state.game_state == 'level_start':
-    if st.session_state.background_image_bytes:
-        full_screen_background(st.session_state.background_image_bytes)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-            <div style="background: rgba(0,0,0,0.8); padding: 40px; border-radius: 20px; 
-                        text-align: center; backdrop-filter: blur(10px);">
-        """, unsafe_allow_html=True)
-        
-        st.markdown(f"<h1 style='color: #6366f1;'>Level {st.session_state.level}</h1>", unsafe_allow_html=True)
-        sector_name = SECTOR_NAMES.get(st.session_state.level, "Unknown Sector")
-        st.markdown(f"<h3 style='color: #cbd5e1;'>Sector: {sector_name}</h3>", unsafe_allow_html=True)
-        
-        st.write("")
-        st.markdown(f"**Current Score: {st.session_state.score}**")
-        st.markdown(f"**Pilot: {st.session_state.spacetag or 'Anonymous'}**")
-        st.write("")
-        st.info("Tip: Collect moonrocks quickly to build combo multipliers")
-        st.write("")
-        
-        if st.button("BEGIN MISSION", type="primary", use_container_width=True):
             st.session_state.game_state = 'playing'
-            st.session_state.start_time = time.time()
             st.rerun()
-        
-        st.markdown("</div>", unsafe_allow_html=True)
 
-# Playing State - WebRTC
+# Playing State - JavaScript MediaPipe
 elif st.session_state.game_state == 'playing':
     st.markdown(f"""
         <h1 style='text-align: center; color: #6366f1;'>
@@ -423,81 +127,164 @@ elif st.session_state.game_state == 'playing':
         </h1>
     """, unsafe_allow_html=True)
     
-    st.info("📹 **Real-time Mode:** Your hand movements control the game instantly! Allow camera access when prompted.")
+    st.info("📹 **Client-Side Processing:** Hand tracking runs in your browser - NO server connection needed!")
     
-    webrtc_ctx = webrtc_streamer(
-        key="lunar-loot-game",
-        mode=WebRtcMode.SENDRECV,
-        rtc_configuration=RTC_CONFIGURATION,
-        video_processor_factory=VideoProcessor,
-        media_stream_constraints={"video": {"width": 640, "height": 480}, "audio": False},
-        async_processing=False,  # Disable async to avoid event loop issues
-    )
+    # JavaScript MediaPipe Hand Tracking Game
+    components.html("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+        </head>
+        <body style="margin:0; padding:0; background:#0a0e27;">
+            <div style="position: relative; width: 100%; height: 600px;">
+                <video id="video" style="display:none;"></video>
+                <canvas id="canvas" width="640" height="480" style="width:100%; height:100%; border-radius:8px;"></canvas>
+            </div>
+            
+            <script>
+                const video = document.getElementById('video');
+                const canvas = document.getElementById('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Game state
+                let score = 0;
+                let moonrocks = [];
+                let startTime = Date.now();
+                const LEVEL_TIME = 30;
+                const NUM_ROCKS = 6;
+                
+                // Initialize moonrocks
+                for (let i = 0; i < NUM_ROCKS; i++) {
+                    moonrocks.push({
+                        x: Math.random() * 580 + 30,
+                        y: Math.random() * 420 + 30,
+                        collected: false
+                    });
+                }
+                
+                // MediaPipe Hands
+                const hands = new Hands({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+                });
+                
+                hands.setOptions({
+                    maxNumHands: 1,
+                    modelComplexity: 1,
+                    minDetectionConfidence: 0.5,
+                    minTrackingConfidence: 0.5
+                });
+                
+                hands.onResults((results) => {
+                    // Clear canvas
+                    ctx.fillStyle = '#0a0e27';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Draw video
+                    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+                    
+                    // Draw moonrocks
+                    moonrocks.forEach(rock => {
+                        if (!rock.collected) {
+                            ctx.fillStyle = '#FFB6C1';
+                            ctx.beginPath();
+                            ctx.arc(rock.x, rock.y, 30, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = '#FF69B4';
+                            ctx.lineWidth = 3;
+                            ctx.stroke();
+                        }
+                    });
+                    
+                    // Process hand landmarks
+                    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                        const landmarks = results.multiHandLandmarks[0];
+                        
+                        // Draw hand skeleton
+                        ctx.strokeStyle = '#00FF00';
+                        ctx.lineWidth = 2;
+                        const connections = [
+                            [0,1],[1,2],[2,3],[3,4],
+                            [0,5],[5,6],[6,7],[7,8],
+                            [0,9],[9,10],[10,11],[11,12],
+                            [0,13],[13,14],[14,15],[15,16],
+                            [0,17],[17,18],[18,19],[19,20],
+                            [5,9],[9,13],[13,17]
+                        ];
+                        
+                        connections.forEach(([start, end]) => {
+                            ctx.beginPath();
+                            ctx.moveTo(landmarks[start].x * canvas.width, landmarks[start].y * canvas.height);
+                            ctx.lineTo(landmarks[end].x * canvas.width, landmarks[end].y * canvas.height);
+                            ctx.stroke();
+                        });
+                        
+                        // Get index finger tip
+                        const indexTip = landmarks[8];
+                        const fingerX = indexTip.x * canvas.width;
+                        const fingerY = indexTip.y * canvas.height;
+                        
+                        // Draw finger indicator
+                        ctx.fillStyle = '#22C55E';
+                        ctx.beginPath();
+                        ctx.arc(fingerX, fingerY, 20, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = '#FFFFFF';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        
+                        // Check collisions
+                        moonrocks.forEach(rock => {
+                            if (!rock.collected) {
+                                const dist = Math.sqrt((fingerX - rock.x)**2 + (fingerY - rock.y)**2);
+                                if (dist < 50) {
+                                    rock.collected = true;
+                                    score += 10;
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Draw UI
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = '24px Orbitron';
+                    ctx.fillText(`Score: ${score}`, 10, 30);
+                    
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    const remaining = Math.max(0, LEVEL_TIME - elapsed);
+                    ctx.fillText(`Time: ${Math.floor(remaining)}s`, 10, 60);
+                    
+                    const rocksLeft = moonrocks.filter(r => !r.collected).length;
+                    ctx.fillText(`Rocks: ${rocksLeft}`, 10, 90);
+                    
+                    // Check win condition
+                    if (rocksLeft === 0) {
+                        ctx.fillStyle = '#22C55E';
+                        ctx.font = '48px Orbitron';
+                        ctx.fillText('LEVEL COMPLETE!', canvas.width/2 - 200, canvas.height/2);
+                    } else if (remaining <= 0) {
+                        ctx.fillStyle = '#EF4444';
+                        ctx.font = '48px Orbitron';
+                        ctx.fillText('TIME UP!', canvas.width/2 - 100, canvas.height/2);
+                    }
+                });
+                
+                // Start camera
+                const camera = new Camera(video, {
+                    onFrame: async () => {
+                        await hands.send({image: video});
+                    },
+                    width: 640,
+                    height: 480
+                });
+                
+                camera.start();
+            </script>
+        </body>
+        </html>
+    """, height=650)
     
-    # Show connection status
-    if webrtc_ctx.state.playing:
-        st.success("✅ Camera connected! Game is live!")
-    elif webrtc_ctx.state.signalling:
-        st.warning("🔄 Connecting to camera...")
-    
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        if st.button("⏸️ PAUSE GAME", use_container_width=True):
-            st.session_state.game_state = 'title'
-            st.rerun()
-
-# Level Complete
-elif st.session_state.game_state == 'level_complete':
-    if st.session_state.background_image_bytes:
-        full_screen_background(st.session_state.background_image_bytes)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-            <div style="background: rgba(10, 14, 39, 0.9); padding: 40px; border-radius: 12px; 
-                        text-align: center; backdrop-filter: blur(12px);">
-        """, unsafe_allow_html=True)
-        
-        logo_bytes = load_logo()
-        if logo_bytes:
-            st.markdown(f"""
-                <img src="data:image/png;base64,{logo_bytes}" 
-                     style="max-width: 400px; width: 70%; animation: pulse 2s ease-in-out infinite;">
-            """, unsafe_allow_html=True)
-        
-        st.markdown(f"<h1 style='color: #22c55e; margin: 20px 0;'>★ Level {st.session_state.level} Complete!</h1>", 
-                    unsafe_allow_html=True)
-        st.markdown(f"<p style='color: #f8fafc; font-size: 20px;'><strong>Score:</strong> {st.session_state.score}</p>", 
-                    unsafe_allow_html=True)
-        
-        if st.session_state.combo > 0:
-            st.markdown(f"<p style='color: #22c55e; font-size: 18px;'>Maximum Combo: x{st.session_state.combo + 1}</p>", 
-                        unsafe_allow_html=True)
-        
-        st.info("▶ Preparing next sector...")
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    time.sleep(2)
-    st.session_state.level += 1
-    st.session_state.combo = 0
-    reset_level()
-    st.session_state.game_state = 'level_start'
-    st.rerun()
-
-# Level Failed
-elif st.session_state.game_state == 'level_failed':
-    st.markdown(f"""
-        <div style="text-align: center; padding: 50px;">
-            <h1 style="font-size: 3rem; color: #ef4444;">MISSION FAILED</h1>
-            <h2 style="color: #cbd5e1;">Final Score: {st.session_state.score}</h2>
-            <h3 style="color: #cbd5e1;">Levels Completed: {st.session_state.level - 1}</h3>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("🔄 TRY AGAIN", type="primary", use_container_width=True):
-            st.session_state.score = 0
-            st.session_state.level = 1
-            st.session_state.game_state = 'title'
-            st.rerun()
+    if st.button("⏸️ BACK TO MENU", use_container_width=True):
+        st.session_state.game_state = 'title'
+        st.rerun()
