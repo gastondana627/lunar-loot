@@ -87,16 +87,23 @@ st.markdown("""
         border: 1px solid rgba(99, 102, 241, 0.3);
     }
     
-    /* Disable browser text detection on images */
-    [data-testid="stImage"] img {
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        user-select: none;
-        pointer-events: none;
+    /* Disable browser text detection on ALL images */
+    [data-testid="stImage"] img,
+    img {
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+        pointer-events: none !important;
+        -webkit-touch-callout: none !important;
     }
     
-    /* Primary buttons */
+    /* Disable Safari/Chrome text detection overlay */
+    img::after {
+        content: none !important;
+    }
+    
+    /* Primary buttons with click animation */
     .stButton > button {
         background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
         color: #ffffff;
@@ -107,14 +114,19 @@ st.markdown("""
         letter-spacing: 0.5px;
         border-radius: 8px;
         box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         text-transform: uppercase;
     }
     
     .stButton > button:hover {
-        transform: translateY(-2px);
+        transform: translateY(-3px);
         box-shadow: 0 8px 30px rgba(99, 102, 241, 0.6);
         background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+    }
+    
+    .stButton > button:active {
+        transform: translateY(2px) scale(0.98);
+        box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
     }
     
     /* Typography */
@@ -212,43 +224,38 @@ if os.path.exists(chroma_footer_path):
         print(f"Error loading footer video: {e}")
 
 # --- Helper Functions ---
-def play_sound_effect(sound_type="collect_1"):
-    """
-    Play a sound effect using HTML5 audio
+def get_sound_bytes(sound_type="collect"):
+    """Get sound file bytes for playback"""
+    for ext in ['.wav', '.mp3']:
+        local_sound_path = os.path.join(GAME_ROOT_DIR, "sounds", f"{sound_type}{ext}")
+        if os.path.exists(local_sound_path):
+            try:
+                with open(local_sound_path, 'rb') as audio_file:
+                    return audio_file.read(), ext
+            except Exception as e:
+                print(f"Error loading sound {sound_type}: {e}")
+    return None, None
+
+def play_sound_effect(sound_type="collect"):
+    """Play a sound effect - returns HTML audio string"""
+    # Check for local sound files
+    for ext in ['.wav', '.mp3']:
+        local_sound_path = os.path.join(GAME_ROOT_DIR, "sounds", f"{sound_type}{ext}")
+        if os.path.exists(local_sound_path):
+            try:
+                with open(local_sound_path, 'rb') as audio_file:
+                    audio_bytes = base64.b64encode(audio_file.read()).decode()
+                    mime_type = "audio/wav" if ext == '.wav' else "audio/mpeg"
+                    return f'<audio autoplay preload="auto"><source src="data:{mime_type};base64,{audio_bytes}" type="{mime_type}"></audio>'
+            except:
+                pass
     
-    TWO TYPES OF AUDIO:
-    1. Sound Effects (beeps/clicks) - Free online sounds (always available)
-    2. AI Voice Announcements - ElevenLabs generated (optional, in sounds/ folder)
-    
-    Sound effects: collect_1, collect_2, collect_3, level_complete, etc.
-    Voice announcements: level_01_earth, level_02_halley, etc.
-    """
-    # Check if local ElevenLabs AI voice exists (for level announcements)
-    local_sound_path = os.path.join(GAME_ROOT_DIR, "sounds", f"{sound_type}.mp3")
-    
-    if os.path.exists(local_sound_path):
-        # Use local AI voice file
-        try:
-            import base64
-            with open(local_sound_path, 'rb') as audio_file:
-                audio_bytes = base64.b64encode(audio_file.read()).decode()
-                return f'<audio autoplay preload="auto"><source src="data:audio/mpeg;base64,{audio_bytes}" type="audio/mpeg"></audio>'
-        except:
-            pass
-    
-    # Fallback to online sound effects (always available)
+    # Fallback to online sounds
     sounds = {
-        # Collection sounds (short beeps)
-        "collect_1": "https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3",
-        "collect_2": "https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3",
-        "collect_3": "https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3",
-        
-        # Game events
+        "collect": "https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3",
         "level_complete": "https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3",
-        "game_over": "https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3",
-        "time_warning_10": "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
-        "time_warning_5": "https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3",
-        "high_score": "https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3",
+        "level_failed": "https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3",
+        "warning": "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
     }
     
     if sound_type in sounds:
@@ -300,7 +307,220 @@ def reset_level():
     else:
         st.session_state.background_image = None
 
+def display_title_screen():
+    """Classic game title screen with menu options"""
+    # Load main menu background
+    main_menu_bg = os.path.join(GAME_ROOT_DIR, "backgrounds", "Main_Menu", "Main_Menu_Start_Screen_BG.png")
+    
+    if os.path.exists(main_menu_bg):
+        try:
+            bg_bytes = convert_image_to_bytes(main_menu_bg)
+            if bg_bytes:
+                st.markdown(f"""
+                    <style>
+                    .stApp {{
+                        background-image: url(data:image/png;base64,{bg_bytes.decode()});
+                        background-size: cover;
+                        background-position: center;
+                        background-attachment: fixed;
+                    }}
+                    </style>
+                """, unsafe_allow_html=True)
+        except Exception as e:
+            print(f"Error loading background: {e}")
+    
+    # Center column for menu
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        st.write("")
+        st.write("")
+        
+        # Display logo
+        try:
+            logo_path = "ui_assets/branding/Lunar_Loot_Logo.png"
+            with open(logo_path, 'rb') as f:
+                logo_img = base64.b64encode(f.read()).decode()
+            
+            st.markdown(f"""
+                <div style="text-align: center; margin: 40px 0;">
+                    <img src="data:image/png;base64,{logo_img}" 
+                         style="max-width: 500px; width: 90%; animation: logoPulse 3s ease-in-out infinite;"
+                         alt="Lunar Loot">
+                </div>
+                <style>
+                @keyframes logoPulse {{
+                    0%, 100% {{ transform: scale(1); filter: brightness(1); }}
+                    50% {{ transform: scale(1.02); filter: brightness(1.1); }}
+                }}
+                </style>
+            """, unsafe_allow_html=True)
+        except:
+            st.title("LUNAR LOOT")
+        
+        st.write("")
+        st.write("")
+        
+        # Menu buttons
+        if st.button("▶ BEGIN GAME", type="primary", use_container_width=True, key="begin_game"):
+            st.session_state.game_state = 'start'
+            st.rerun()
+        
+        st.write("")
+        
+        if st.button("ℹ️ ABOUT", use_container_width=True, key="about_btn"):
+            st.session_state.game_state = 'about'
+            st.rerun()
+        
+        st.write("")
+        
+        # Credits
+        st.markdown("""
+            <div style="background: rgba(10, 14, 39, 0.8); padding: 20px; border-radius: 12px; 
+                        border: 1px solid rgba(99, 102, 241, 0.3); backdrop-filter: blur(12px);
+                        text-align: center; margin-top: 30px;">
+                <p style="color: #6366f1; font-size: 14px; margin: 5px 0;">AI POWERED BY</p>
+                <p style="color: #f8fafc; font-size: 12px; margin: 5px 0;">
+                    Google MediaPipe • Freepik • ElevenLabs • Adobe
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+def display_about_screen():
+    """About screen with game information"""
+    # Background
+    main_menu_bg = os.path.join(GAME_ROOT_DIR, "backgrounds", "Main_Menu", "Main_Menu_Start_Screen_BG.png")
+    if os.path.exists(main_menu_bg):
+        try:
+            bg_bytes = convert_image_to_bytes(main_menu_bg)
+            if bg_bytes:
+                st.markdown(f"""
+                    <style>
+                    .stApp {{
+                        background-image: url(data:image/png;base64,{bg_bytes.decode()});
+                        background-size: cover;
+                        background-position: center;
+                        background-attachment: fixed;
+                    }}
+                    </style>
+                """, unsafe_allow_html=True)
+        except:
+            pass
+    
+    col1, col2, col3 = st.columns([1, 3, 1])
+    
+    with col2:
+        st.markdown("""
+            <div style="background: rgba(10, 14, 39, 0.9); padding: 40px; border-radius: 12px; 
+                        border: 1px solid rgba(99, 102, 241, 0.4); backdrop-filter: blur(12px);">
+                <h1 style="color: #6366f1; text-align: center; margin-bottom: 30px;">ABOUT LUNAR LOOT</h1>
+                
+                <h3 style="color: #f8fafc;">🎮 The Game</h3>
+                <p style="color: #cbd5e1; line-height: 1.8;">
+                    Lunar Loot is an AI-powered hand-tracking game where you collect cosmic moonrocks 
+                    using only your hand gestures. No controllers needed - just your webcam and your hands!
+                </p>
+                
+                <h3 style="color: #f8fafc; margin-top: 25px;">🎯 How to Play</h3>
+                <p style="color: #cbd5e1; line-height: 1.8;">
+                    • Show your hand to the camera<br>
+                    • Point with your index finger<br>
+                    • Touch moonrocks to collect them<br>
+                    • Collect all rocks before time runs out<br>
+                    • Build combos for bonus points!
+                </p>
+                
+                <h3 style="color: #f8fafc; margin-top: 25px;">🎁 Easter Eggs</h3>
+                <p style="color: #cbd5e1; line-height: 1.8;">
+                    • ❤️ Make a heart with both hands: +50 points<br>
+                    • 👍 Give a thumbs up: +100 points + Chroma Awards shoutout!
+                </p>
+                
+                <h3 style="color: #f8fafc; margin-top: 25px;">🤖 AI Technology</h3>
+                <p style="color: #cbd5e1; line-height: 1.8;">
+                    • <strong>Google MediaPipe:</strong> Real-time hand tracking<br>
+                    • <strong>Freepik AI:</strong> Space-themed visuals<br>
+                    • <strong>ElevenLabs:</strong> Audio generation<br>
+                    • <strong>Adobe:</strong> Editing and polish
+                </p>
+                
+                <h3 style="color: #f8fafc; margin-top: 25px;">🏆 Created For</h3>
+                <p style="color: #cbd5e1; line-height: 1.8; text-align: center;">
+                    <strong style="color: #6366f1; font-size: 18px;">Chroma Awards 2025</strong>
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.write("")
+        
+        if st.button("← BACK TO MENU", use_container_width=True):
+            st.session_state.game_state = 'title'
+            st.rerun()
+
 def display_start_screen():
+    # Music button with better online space music
+    import streamlit.components.v1 as components
+    
+    components.html("""
+        <!DOCTYPE html>
+        <html>
+        <body style="margin:0; padding:0; overflow:hidden;">
+            <div style="position: fixed; bottom: 10px; left: 10px; z-index: 10000;">
+                <button id="musicBtn" style="
+                    background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+                    border: 2px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 50%;
+                    width: 50px;
+                    height: 50px;
+                    cursor: pointer;
+                    font-size: 20px;
+                    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.5);
+                    transition: all 0.3s ease;
+                ">
+                    🎵
+                </button>
+            </div>
+            <audio id="bgMusic" loop>
+                <source src="https://assets.mixkit.co/active_storage/sfx/2745/2745-preview.mp3" type="audio/mpeg">
+            </audio>
+            <script>
+                var music = document.getElementById('bgMusic');
+                var btn = document.getElementById('musicBtn');
+                var playing = false;
+                
+                btn.onmouseover = function() {
+                    this.style.transform = 'scale(1.1)';
+                };
+                
+                btn.onmouseout = function() {
+                    this.style.transform = 'scale(1)';
+                };
+                
+                btn.onclick = function() {
+                    if (playing) {
+                        music.pause();
+                        btn.innerHTML = '🔇';
+                        playing = false;
+                    } else {
+                        music.volume = 0.3;
+                        music.play();
+                        btn.innerHTML = '🎵';
+                        playing = true;
+                    }
+                };
+                
+                // Auto-play attempt
+                setTimeout(function() {
+                    music.volume = 0.3;
+                    music.play().then(function() {
+                        playing = true;
+                    }).catch(function() {});
+                }, 500);
+            </script>
+        </body>
+        </html>
+    """, height=100, scrolling=False)
+    
     # Load and display main menu background
     main_menu_bg = os.path.join(GAME_ROOT_DIR, "backgrounds", "Main_Menu", "Main_Menu_Start_Screen_BG.png")
     
@@ -325,20 +545,40 @@ def display_start_screen():
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        # Enhanced title with better styling for background
-        st.markdown("""
-            <div style="background: rgba(10, 14, 39, 0.85); padding: 30px; border-radius: 12px; 
-                        border: 1px solid rgba(99, 102, 241, 0.3); backdrop-filter: blur(12px);
-                        margin-bottom: 20px;">
-                <h1 style="font-size: 3.5rem; margin: 0; color: #f8fafc; 
-                           text-shadow: 0 0 20px rgba(99, 102, 241, 0.8);">
-                    Lunar Loot
-                </h1>
-                <p style="font-size: 1.25rem; color: #cbd5e1; margin: 10px 0 0 0;">
-                    Collect cosmic moonrocks before time runs out
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
+        # Display logo instead of text title
+        try:
+            import base64
+            logo_path = "ui_assets/branding/Lunar_Loot_Logo.png"
+            with open(logo_path, 'rb') as f:
+                logo_img = base64.b64encode(f.read()).decode()
+            
+            st.markdown(f"""
+                <div style="background: rgba(10, 14, 39, 0.85); padding: 30px; border-radius: 12px; 
+                            border: 1px solid rgba(99, 102, 241, 0.3); backdrop-filter: blur(12px);
+                            margin-bottom: 20px; text-align: center;">
+                    <img src="data:image/png;base64,{logo_img}" 
+                         style="max-width: 100%; width: 400px; margin-bottom: 15px;"
+                         alt="Lunar Loot">
+                    <p style="font-size: 1.25rem; color: #cbd5e1; margin: 10px 0 0 0;">
+                        Collect cosmic moonrocks before time runs out
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+        except:
+            # Fallback to text if logo not found
+            st.markdown("""
+                <div style="background: rgba(10, 14, 39, 0.85); padding: 30px; border-radius: 12px; 
+                            border: 1px solid rgba(99, 102, 241, 0.3); backdrop-filter: blur(12px);
+                            margin-bottom: 20px;">
+                    <h1 style="font-size: 3.5rem; margin: 0; color: #f8fafc; 
+                               text-shadow: 0 0 20px rgba(99, 102, 241, 0.8);">
+                        LUNAR LOOT
+                    </h1>
+                    <p style="font-size: 1.25rem; color: #cbd5e1; margin: 10px 0 0 0;">
+                        Collect cosmic moonrocks before time runs out
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
         
         # Spacetag entry with enhanced styling
         st.markdown('<p style="color: #e2e8f0; font-weight: 600; margin-bottom: 8px;">Enter your Spacetag</p>', 
@@ -390,57 +630,44 @@ def display_start_screen():
         
         st.write("")
         
-        # Custom Launch Mission button with image
-        try:
-            import base64
-            button_path = "ui_assets/buttons/Lunar_ Loot_Button.png"
-            with open(button_path, 'rb') as f:
-                button_img = base64.b64encode(f.read()).decode()
-            
-            st.markdown(f"""
-                <style>
-                .launch-btn {{
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    display: block;
-                    margin: 20px auto;
-                    max-width: 400px;
-                }}
-                .launch-btn:hover {{
-                    transform: translateY(-3px);
-                    filter: brightness(1.2);
-                }}
-                .launch-btn:active {{
-                    transform: translateY(2px) scale(0.98);
-                    filter: brightness(0.9);
-                }}
-                .launch-btn img {{
-                    width: 100%;
-                    height: auto;
-                }}
-                </style>
-                <div class="launch-btn">
-                    <img src="data:image/png;base64,{button_img}" alt="Launch Mission">
-                </div>
-            """, unsafe_allow_html=True)
-        except:
-            pass  # Fallback to regular button if image not found
+        # Custom styled button matching your aesthetic
+        st.markdown("""
+            <style>
+            .launch-mission-btn {
+                background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 50px;
+                padding: 20px 60px;
+                font-size: 24px;
+                font-weight: 700;
+                color: white;
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4),
+                            inset 0 2px 4px rgba(255, 255, 255, 0.2);
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                margin: 30px auto;
+                max-width: 400px;
+                display: block;
+            }
+            .launch-mission-btn:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 12px 40px rgba(99, 102, 241, 0.6);
+                background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+            }
+            .launch-mission-btn:active {
+                transform: translateY(2px) scale(0.98);
+                box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+            }
+            </style>
+        """, unsafe_allow_html=True)
         
-        if st.button("▶ START MISSION", type="primary", use_container_width=True):
+        if st.button("LAUNCH MISSION", key="launch_btn", type="primary", use_container_width=True):
             if not st.session_state.get('spacetag'):
                 st.warning("Please enter a Spacetag to begin")
             else:
-                # Enable audio by user interaction (browser autoplay policy)
-                st.markdown("""
-                    <script>
-                    // Enable audio context on user interaction
-                    document.addEventListener('click', function() {
-                        var audio = new Audio();
-                        audio.play().catch(e => console.log('Audio enabled'));
-                    }, { once: true });
-                    </script>
-                """, unsafe_allow_html=True)
-                
                 # Before game starts, set the defaults
                 st.session_state.score = 0
                 st.session_state.level = 1
@@ -553,22 +780,7 @@ def display_end_screen():
         
         st.write("")
         
-        # Custom New Mission button
-        try:
-            import base64
-            button_path = "ui_assets/buttons/Mission_Button.png"
-            with open(button_path, 'rb') as f:
-                button_img = base64.b64encode(f.read()).decode()
-            
-            st.markdown(f"""
-                <div class="launch-btn">
-                    <img src="data:image/png;base64,{button_img}" alt="New Mission">
-                </div>
-            """, unsafe_allow_html=True)
-        except:
-            pass
-        
-        if st.button("▶ NEW MISSION", type="primary", use_container_width=True):
+        if st.button("NEW MISSION", key="new_mission_btn", type="primary", use_container_width=True):
             # Reset the game completely and release camera
             if 'cap' in st.session_state:
                 try:
@@ -642,6 +854,27 @@ def display_end_screen():
 def display_level_transition_animation():
     """Displays a level transition animation - quick transition between levels."""
     
+    # Success visual effect - VISIBLE overlay
+    st.markdown("""
+        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                    background: radial-gradient(circle, rgba(34,197,94,0.5) 0%, rgba(10,14,39,0.8) 70%);
+                    z-index: 1; pointer-events: none; animation: successPulse 2s ease-in-out infinite;">
+        </div>
+        <style>
+            @keyframes successPulse {
+                0%, 100% { opacity: 0.5; }
+                50% { opacity: 0.9; }
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # Play pending sound if any
+    if st.session_state.get('pending_sound'):
+        sound_html = play_sound_effect(st.session_state.pending_sound)
+        if sound_html:
+            st.markdown(sound_html, unsafe_allow_html=True)
+        st.session_state.pending_sound = None
+    
     # Simple level complete screen
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -651,26 +884,39 @@ def display_level_transition_animation():
                         text-align: center;">
         """, unsafe_allow_html=True)
         
-        st.markdown(f"<h1 style='color: #22c55e; margin: 0 0 20px 0;'>★ Level {st.session_state.level} Complete!</h1>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color: #f8fafc; font-size: 20px; margin: 10px 0;'><strong>Score:</strong> {st.session_state.score}</p>", unsafe_allow_html=True)
+        # Display logo centered
+        try:
+            import base64
+            logo_path = "ui_assets/branding/Lunar_Loot_Logo.png"
+            with open(logo_path, 'rb') as f:
+                logo_img = base64.b64encode(f.read()).decode()
+            
+            st.markdown(f"""
+                <div style="text-align: center; margin: 20px 0;">
+                    <img src="data:image/png;base64,{logo_img}" 
+                         style="max-width: 400px; width: 70%; margin-bottom: 20px;
+                                animation: pulse 2s ease-in-out infinite;"
+                         alt="Lunar Loot">
+                </div>
+                <style>
+                @keyframes pulse {{
+                    0%, 100% {{ opacity: 1; transform: scale(1); }}
+                    50% {{ opacity: 0.8; transform: scale(1.05); }}
+                }}
+                </style>
+            """, unsafe_allow_html=True)
+        except:
+            pass
+        
+        st.markdown(f"<h1 style='color: #22c55e; margin: 20px 0; text-align: center;'>★ Level {st.session_state.level} Complete!</h1>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color: #f8fafc; font-size: 20px; margin: 10px 0; text-align: center;'><strong>Score:</strong> {st.session_state.score}</p>", unsafe_allow_html=True)
         
         if st.session_state.combo > 0:
-            st.markdown(f"<p style='color: #22c55e; font-size: 18px; margin: 10px 0;'>Maximum Combo: x{st.session_state.combo + 1}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='color: #22c55e; font-size: 18px; margin: 10px 0; text-align: center;'>Maximum Combo: x{st.session_state.combo + 1}</p>", unsafe_allow_html=True)
         
         st.write("")
         st.info("▶ Preparing next sector...")
         st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Animation if available
-        if 'animation_bytes' in st.session_state:
-            video_html = f"""
-            <div style="text-align: center; margin: 20px 0;">
-                <video width="400" height="300" autoplay muted loop style="border-radius: 12px;">
-                    <source src="data:video/mp4;base64,{st.session_state.animation_bytes.decode()}" type="video/mp4">
-                </video>
-            </div>
-            """
-            st.markdown(video_html, unsafe_allow_html=True)
 
     time.sleep(2)  # Quick transition
 
@@ -708,22 +954,7 @@ def display_level_start_screen():
         st.info("Tip: Collect moonrocks quickly to build combo multipliers")
         st.write("")
         
-        # Custom Begin Mission button
-        try:
-            import base64
-            button_path = "ui_assets/buttons/Begin_Mission.png"
-            with open(button_path, 'rb') as f:
-                button_img = base64.b64encode(f.read()).decode()
-            
-            st.markdown(f"""
-                <div class="launch-btn">
-                    <img src="data:image/png;base64,{button_img}" alt="Begin Mission">
-                </div>
-            """, unsafe_allow_html=True)
-        except:
-            pass
-        
-        if st.button("▶ BEGIN MISSION", type="primary", use_container_width=True):
+        if st.button("BEGIN MISSION", key="begin_btn", type="primary", use_container_width=True):
             st.session_state.game_state = 'playing'  # Now start the level
             st.session_state.start_time = time.time()  # Resets time
             st.rerun()
@@ -792,7 +1023,7 @@ def convert_image_to_bytes(image_path):
 
 # --- Initialize Streamlit Session State ---
 if 'game_state' not in st.session_state:
-    st.session_state.game_state = 'start'  # 'start', 'playing', 'level_transition', 'end', 'level_start'
+    st.session_state.game_state = 'title'  # 'title', 'start', 'about', 'playing', 'level_transition', 'end', 'level_start'
 if 'score' not in st.session_state:
     st.session_state.score = 0
 if 'start_time' not in st.session_state:
@@ -830,6 +1061,22 @@ if 'bg_overlay_cached' not in st.session_state:
     st.session_state.bg_overlay_cached = None
 if 'bg_overlay_path' not in st.session_state:
     st.session_state.bg_overlay_path = None
+if 'pending_sound' not in st.session_state:
+    st.session_state.pending_sound = None
+if 'sound_queue' not in st.session_state:
+    st.session_state.sound_queue = []
+if 'audio_enabled' not in st.session_state:
+    st.session_state.audio_enabled = False
+if 'sound_counter' not in st.session_state:
+    st.session_state.sound_counter = 0
+if 'flash_effect' not in st.session_state:
+    st.session_state.flash_effect = None
+if 'music_enabled' not in st.session_state:
+    st.session_state.music_enabled = True
+if 'heart_bonus_given' not in st.session_state:
+    st.session_state.heart_bonus_given = False
+if 'chroma_bonus_given' not in st.session_state:
+    st.session_state.chroma_bonus_given = False
 
 #Added encoding
 if 'animation_bytes' not in st.session_state:
@@ -887,7 +1134,11 @@ def overlay_image(frame, img, x, y):
 # --- Main Game Loop ---
 image_placeholder = st.empty()  # Placeholder for the video feed
 
-if st.session_state.game_state == 'start':
+if st.session_state.game_state == 'title':
+    display_title_screen()
+elif st.session_state.game_state == 'about':
+    display_about_screen()
+elif st.session_state.game_state == 'start':
     display_start_screen()
 elif st.session_state.game_state == 'level_transition':
     display_level_transition_animation()
@@ -915,10 +1166,68 @@ elif st.session_state.game_state == 'playing':
             st.session_state.background_image_bytes = background_image_bytes
             full_screen_background(st.session_state.background_image_bytes)
     
+    # Music button in gameplay
+    import streamlit.components.v1 as components
+    components.html("""
+        <div style="position: fixed; bottom: 80px; left: 20px; z-index: 10000;">
+            <button id="musicBtn" style="
+                background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 50%;
+                width: 60px;
+                height: 60px;
+                cursor: pointer;
+                font-size: 24px;
+                box-shadow: 0 4px 15px rgba(99, 102, 241, 0.5);
+                transition: all 0.3s ease;
+            ">
+                🎵
+            </button>
+        </div>
+        <audio id="bgMusic" loop>
+            <source src="https://assets.mixkit.co/active_storage/sfx/2462/2462-preview.mp3" type="audio/mpeg">
+        </audio>
+        <script>
+            var music = document.getElementById('bgMusic');
+            var btn = document.getElementById('musicBtn');
+            var musicPlaying = false;
+            
+            btn.addEventListener('mouseover', function() {
+                this.style.transform = 'scale(1.1)';
+            });
+            
+            btn.addEventListener('mouseout', function() {
+                this.style.transform = 'scale(1)';
+            });
+            
+            btn.addEventListener('click', function() {
+                if (musicPlaying) {
+                    music.pause();
+                    btn.innerHTML = '🔇';
+                    musicPlaying = false;
+                } else {
+                    music.volume = 0.3;
+                    music.play();
+                    btn.innerHTML = '🎵';
+                    musicPlaying = true;
+                }
+            });
+            
+            // Continue playing if already started
+            if (window.musicStarted) {
+                music.volume = 0.3;
+                music.play();
+                musicPlaying = true;
+            }
+        </script>
+    """, height=80)
+    
     # Create placeholders for dynamic updates
     hud_placeholder = st.empty()
     video_placeholder = st.empty()
-    sound_placeholder = st.empty()
+    
+    # Audio player using components.html - runs independently of loop
+    audio_placeholder = st.empty()
     
     while st.session_state.cap.isOpened() and st.session_state.game_state == 'playing':  # keep the main loop here
 
@@ -938,14 +1247,20 @@ elif st.session_state.game_state == 'playing':
         
         # Time warnings
         if remaining_time <= 10 and remaining_time > 9 and st.session_state.last_warning_time != 10:
-            sound_html = play_sound_effect("time_warning_10")
-            if sound_html:
-                sound_placeholder.markdown(sound_html, unsafe_allow_html=True)
+            with audio_placeholder:
+                components.html("""
+                    <audio autoplay>
+                        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+                    </audio>
+                """, height=0)
             st.session_state.last_warning_time = 10
         elif remaining_time <= 5 and remaining_time > 4 and st.session_state.last_warning_time != 5:
-            sound_html = play_sound_effect("time_warning_5")
-            if sound_html:
-                sound_placeholder.markdown(sound_html, unsafe_allow_html=True)
+            with audio_placeholder:
+                components.html("""
+                    <audio autoplay>
+                        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+                    </audio>
+                """, height=0)
             st.session_state.last_warning_time = 5
         
         if remaining_time == 0:
@@ -959,6 +1274,7 @@ elif st.session_state.game_state == 'playing':
             # Check if they collected all moonrocks
             if len(st.session_state.moonrocks) > 0:
                 # Failed to collect all - offer retry
+                st.session_state.pending_sound = "level_failed"
                 st.session_state.game_state = 'level_failed'
             else:
                 # Time ran out but all collected
@@ -968,6 +1284,74 @@ elif st.session_state.game_state == 'playing':
             st.rerun()
 
         if result.multi_hand_landmarks:
+            # Easter egg: Detect heart gesture (two hands close together)
+            if len(result.multi_hand_landmarks) == 2:
+                hand1 = result.multi_hand_landmarks[0]
+                hand2 = result.multi_hand_landmarks[1]
+                
+                # Get thumb tips from both hands
+                thumb1 = hand1.landmark[mp_hands.HandLandmark.THUMB_TIP]
+                thumb2 = hand2.landmark[mp_hands.HandLandmark.THUMB_TIP]
+                
+                # Calculate distance between thumbs
+                thumb_distance = ((thumb1.x - thumb2.x) ** 2 + (thumb1.y - thumb2.y) ** 2) ** 0.5
+                
+                # Debug: Draw line between thumbs (optional - shows detection)
+                thumb1_px = (int(thumb1.x * st.session_state.video_width), int(thumb1.y * st.session_state.video_height))
+                thumb2_px = (int(thumb2.x * st.session_state.video_width), int(thumb2.y * st.session_state.video_height))
+                
+                # If thumbs are close (heart gesture), give bonus!
+                if thumb_distance < 0.2 and not st.session_state.get('heart_bonus_given'):  # Made more forgiving (0.2 instead of 0.15)
+                    st.session_state.score += 50
+                    st.session_state.flash_effect = "heart"
+                    st.session_state.heart_bonus_given = True
+                    
+                    # Draw indicator on frame
+                    cv2.circle(frame, thumb1_px, 20, (255, 105, 180), -1)
+                    cv2.circle(frame, thumb2_px, 20, (255, 105, 180), -1)
+                    cv2.line(frame, thumb1_px, thumb2_px, (255, 105, 180), 5)
+                    
+                    # Play special sound
+                    with audio_placeholder:
+                        components.html("""
+                            <audio autoplay>
+                                <source src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" type="audio/mpeg">
+                            </audio>
+                        """, height=0)
+                
+                # Reset bonus flag if hands separate
+                if thumb_distance > 0.25:
+                    st.session_state.heart_bonus_given = False
+            
+            # Easter egg: Detect thumbs up for Chroma Awards shoutout!
+            for hand_landmarks in result.multi_hand_landmarks:
+                thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
+                thumb_ip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_IP]
+                index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+                index_mcp = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP]
+                
+                # Thumbs up: thumb extended up, fingers curled
+                thumb_extended = thumb_tip.y < thumb_ip.y - 0.05
+                fingers_curled = index_tip.y > index_mcp.y
+                
+                if thumb_extended and fingers_curled and not st.session_state.get('chroma_bonus_given'):
+                    st.session_state.score += 100
+                    st.session_state.flash_effect = "chroma"
+                    st.session_state.chroma_bonus_given = True
+                    
+                    # Play epic sound
+                    with audio_placeholder:
+                        components.html("""
+                            <audio autoplay>
+                                <source src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" type="audio/mpeg">
+                            </audio>
+                        """, height=0)
+                    break
+                
+                # Reset if thumb goes down
+                if not thumb_extended:
+                    st.session_state.chroma_bonus_given = False
+            
             for hand_landmarks in result.multi_hand_landmarks:
                 index_finger = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
                 fx, fy = int(index_finger.x * st.session_state.video_width), int(index_finger.y * st.session_state.video_height)  # Capture video width and height from session state
@@ -979,8 +1363,16 @@ elif st.session_state.game_state == 'playing':
                     if abs(fx - rx) < 30 and abs(fy - ry) < 30:
                         st.session_state.moonrocks.remove(rock)
                         
-                        # Sound effects disabled for now (browser autoplay restrictions)
-                        # Will add back with proper user interaction handling
+                        # Visual flash effect on collection
+                        st.session_state.flash_effect = "collect"
+                        
+                        # Play beep using components.html - works during loop!
+                        with audio_placeholder:
+                            components.html("""
+                                <audio autoplay>
+                                    <source src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3" type="audio/mpeg">
+                                </audio>
+                            """, height=0)
                         st.session_state.collect_sound_index += 1
                         
                         # Combo system
@@ -1001,12 +1393,7 @@ elif st.session_state.game_state == 'playing':
                         st.session_state.last_collect_time = current_time
                         
                         if not st.session_state.moonrocks:  # Level Complete
-                            # Play level complete sound
-                            sound_html = play_sound_effect("level_complete")
-                            if sound_html:
-                                sound_placeholder.markdown(sound_html, unsafe_allow_html=True)
-                            
-                            # Capture selfie frame
+                            # Capture selfie frame FIRST
                             from enhanced_features import create_space_selfie
                             st.session_state.selfie_frame = create_space_selfie(
                                 frame, st.session_state.score, st.session_state.level, st.session_state.spacetag
@@ -1015,6 +1402,9 @@ elif st.session_state.game_state == 'playing':
                             # Time bonus
                             time_bonus = int(remaining_time * 2)
                             st.session_state.score += time_bonus
+                            
+                            # Store sound to play on next screen
+                            st.session_state.pending_sound = "level_complete"
                             
                             st.session_state.game_state = 'level_transition'  # Go to level transition
                             st.rerun()
@@ -1046,24 +1436,106 @@ elif st.session_state.game_state == 'playing':
         for rx, ry in st.session_state.moonrocks:
             overlay_image(frame, moonrock_img, rx, ry)
 
-        # Update HUD with current stats
+        # Update HUD with current stats FIRST
         time_color = "#ef4444" if remaining_time < 10 else "#fbbf24" if remaining_time < 20 else "#22c55e"
-        combo_display = f"<p style='color: #22c55e; font-size: 20px; margin: 15px 0 0 0; font-weight: bold;'>COMBO x{st.session_state.combo + 1}!</p>" if st.session_state.combo > 0 else ""
+        combo_display = f"<p style='color: #22c55e; font-size: 14px; margin: 8px 0 0 0; font-weight: bold;'>COMBO x{st.session_state.combo + 1}!</p>" if st.session_state.combo > 0 else ""
+        
+        # Visual flash effect overlay - SEPARATE from HUD
+        flash_html = ""
+        if st.session_state.flash_effect == "collect":
+            flash_html = """
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                        background: radial-gradient(circle, rgba(34,197,94,0.3) 0%, transparent 70%);
+                        pointer-events: none; z-index: 50; animation: flashCollect 0.3s ease-out;">
+            </div>
+            <style>
+                @keyframes flashCollect {
+                    0% { opacity: 1; }
+                    100% { opacity: 0; }
+                }
+            </style>
+            """
+            st.session_state.flash_effect = None
+        elif st.session_state.flash_effect == "heart":
+            flash_html = """
+            <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                        font-size: 120px; z-index: 50; animation: heartPop 1s ease-out;
+                        pointer-events: none; text-shadow: 0 0 20px rgba(255,105,180,0.8);">
+                ❤️
+            </div>
+            <div style="position: fixed; top: 20%; left: 50%; transform: translateX(-50%);
+                        background: rgba(255,105,180,0.9); padding: 15px 30px; border-radius: 25px;
+                        z-index: 51; animation: bonusPop 1s ease-out; pointer-events: none;
+                        box-shadow: 0 4px 20px rgba(255,105,180,0.5);">
+                <p style="color: white; margin: 0; font-size: 24px; font-weight: bold;">+50 BONUS!</p>
+            </div>
+            <style>
+                @keyframes heartPop {
+                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+                    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+                    100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+                }
+                @keyframes bonusPop {
+                    0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+                    20% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                    80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                    100% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+                }
+            </style>
+            """
+            st.session_state.flash_effect = None
+        elif st.session_state.flash_effect == "chroma":
+            flash_html = """
+            <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                        font-size: 80px; z-index: 50; animation: chromaPop 1.5s ease-out;
+                        pointer-events: none; text-shadow: 0 0 30px rgba(99,102,241,0.8);
+                        background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        background-clip: text;
+                        font-weight: 900;">
+                CHROMA AWARDS
+            </div>
+            <div style="position: fixed; top: 30%; left: 50%; transform: translateX(-50%);
+                        background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+                        padding: 20px 40px; border-radius: 30px;
+                        z-index: 51; animation: chromaBonusPop 1.5s ease-out; pointer-events: none;
+                        box-shadow: 0 8px 30px rgba(99,102,241,0.6);
+                        border: 2px solid rgba(255,255,255,0.3);">
+                <p style="color: white; margin: 0; font-size: 28px; font-weight: bold;">👍 +100 BONUS!</p>
+                <p style="color: #fbbf24; margin: 5px 0 0 0; font-size: 16px;">Thanks for the support!</p>
+            </div>
+            <style>
+                @keyframes chromaPop {
+                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0) rotate(-10deg); }
+                    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotate(0deg); }
+                    100% { opacity: 0; transform: translate(-50%, -50%) scale(1) rotate(10deg); }
+                }
+                @keyframes chromaBonusPop {
+                    0% { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(0.8); }
+                    20% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+                    80% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+                    100% { opacity: 0; transform: translateX(-50%) translateY(30px) scale(0.8); }
+                }
+            </style>
+            """
+            st.session_state.flash_effect = None
         
         hud_html = f"""
-        <div style="position: fixed; top: 20px; right: 20px; 
-                    background: rgba(10, 14, 39, 0.95); 
-                    padding: 20px; border-radius: 12px; 
-                    border: 1px solid rgba(99, 102, 241, 0.4);
-                    backdrop-filter: blur(12px);
-                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-                    z-index: 9999;
-                    min-width: 200px;">
-            <h3 style='color: #6366f1; margin: 0 0 15px 0;'>{st.session_state.spacetag}</h3>
-            <p style='color: #f8fafc; font-size: 18px; margin: 8px 0;'><strong>Score:</strong> {st.session_state.score}</p>
-            <p style='color: #f8fafc; font-size: 18px; margin: 8px 0;'><strong>Level:</strong> {st.session_state.level}</p>
-            <p style='color: {time_color}; font-size: 18px; margin: 8px 0;'><strong>Time:</strong> {int(remaining_time)}s</p>
-            <p style='color: #f8fafc; font-size: 18px; margin: 8px 0;'><strong>Rocks:</strong> {len(st.session_state.moonrocks)}</p>
+        <div style="position: fixed; top: 10px; right: 10px; 
+                    background: rgba(10, 14, 39, 0.75); 
+                    padding: 12px 16px; border-radius: 8px; 
+                    border: 1px solid rgba(99, 102, 241, 0.3);
+                    backdrop-filter: blur(8px);
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+                    z-index: 100;
+                    pointer-events: none;
+                    min-width: 160px;">
+            <p style='color: #6366f1; margin: 0 0 8px 0; font-size: 14px; font-weight: 600;'>{st.session_state.spacetag}</p>
+            <p style='color: #f8fafc; font-size: 14px; margin: 4px 0;'><strong>Score:</strong> {st.session_state.score}</p>
+            <p style='color: #f8fafc; font-size: 14px; margin: 4px 0;'><strong>Level:</strong> {st.session_state.level}</p>
+            <p style='color: {time_color}; font-size: 14px; margin: 4px 0;'><strong>Time:</strong> {int(remaining_time)}s</p>
+            <p style='color: #f8fafc; font-size: 14px; margin: 4px 0;'><strong>Rocks:</strong> {len(st.session_state.moonrocks)}</p>
             {combo_display}
         </div>
         """
@@ -1073,9 +1545,36 @@ elif st.session_state.game_state == 'playing':
         video_placeholder.image(frame, channels="BGR", use_container_width=True)
 
 elif st.session_state.game_state == 'level_failed':
-    # Level failed screen
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
+    # Failure visual effect - BEHIND content with pointer-events: none
+    st.markdown("""
+        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                    background: radial-gradient(circle, rgba(239,68,68,0.3) 0%, rgba(10,14,39,0.9) 70%);
+                    z-index: -1; pointer-events: none; animation: failShake 0.5s ease-in-out;">
+        </div>
+        <style>
+            @keyframes failShake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-10px); }
+                75% { transform: translateX(10px); }
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # Play pending sound or level failed sound
+    # Play sound
+    if st.session_state.get('pending_sound'):
+        sound_html = play_sound_effect(st.session_state.pending_sound)
+        st.session_state.pending_sound = None
+    else:
+        sound_html = play_sound_effect("level_failed")
+    
+    if sound_html:
+        st.markdown(sound_html, unsafe_allow_html=True)
+    
+    # Level failed screen with selfie
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
         st.markdown("""
             <div style="background: rgba(10, 14, 39, 0.9); padding: 40px; border-radius: 12px; 
                         border: 1px solid rgba(239, 68, 68, 0.5); backdrop-filter: blur(12px);
@@ -1107,6 +1606,25 @@ elif st.session_state.game_state == 'level_failed':
                 st.rerun()
         
         st.markdown("</div>", unsafe_allow_html=True)
+    
+    with col2:
+        # Display selfie with download button (captured instantly on failure)
+        if st.session_state.get('selfie_frame') is not None:
+            st.markdown("### 📸 Mission Snapshot")
+            st.image(st.session_state.selfie_frame, use_container_width=True)
+            
+            # Download button
+            import cv2
+            _, buffer = cv2.imencode('.jpg', st.session_state.selfie_frame)
+            st.download_button(
+                label="↓ Download Snapshot",
+                data=buffer.tobytes(),
+                file_name=f"lunar_loot_failed_{st.session_state.spacetag}.jpg",
+                mime="image/jpeg",
+                use_container_width=True
+            )
+        else:
+            st.info("○ No snapshot available")
 
 elif st.session_state.game_state == 'end':
     display_end_screen()
