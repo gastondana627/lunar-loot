@@ -1,9 +1,7 @@
-## Lunar Loot - AI-Powered Hand Tracking Game
+## Lunar Loot - WebRTC Production Version V2
 ## Created for Chroma Awards 2025
 ## Tools: Google MediaPipe, Freepik, Adobe
-## 
-## NOTE: For best experience, run locally with: streamlit run catching_moonrocks_ultimate.py
-## This cloud version has limited camera functionality due to browser restrictions
+## IMPROVED: Better ICE server configuration for production
 
 import cv2
 import mediapipe as mp
@@ -13,8 +11,14 @@ import os
 import streamlit as st
 import time
 import base64
-from PIL import Image
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration, VideoProcessorBase
+import av
+import logging
 import streamlit.components.v1 as components
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Page configuration
 st.set_page_config(
@@ -30,7 +34,20 @@ NUM_MOONROCKS = 5
 GAME_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 BACKGROUND_IMAGE_DIR = os.path.join(GAME_ROOT_DIR, "backgrounds", "New_Background_Rotation_1")
 
-# Game configuration - no WebRTC needed
+# Enhanced WebRTC Configuration with multiple TURN servers
+RTC_CONFIGURATION = RTCConfiguration({
+    "iceServers": [
+        # Google STUN servers
+        {"urls": ["stun:stun.l.google.com:19302"]},
+        {"urls": ["stun:stun1.l.google.com:19302"]},
+        {"urls": ["stun:stun2.l.google.com:19302"]},
+        # Public TURN servers
+        {"urls": ["turn:openrelay.metered.ca:80"], "username": "openrelayproject", "credential": "openrelayproject"},
+        {"urls": ["turn:openrelay.metered.ca:443"], "username": "openrelayproject", "credential": "openrelayproject"},
+        {"urls": ["turn:openrelay.metered.ca:443?transport=tcp"], "username": "openrelayproject", "credential": "openrelayproject"},
+    ],
+    "iceTransportPolicy": "all",  # Try all connection methods
+})
 
 # Initialize MediaPipe
 mp_hands = mp.solutions.hands
@@ -84,16 +101,12 @@ if 'spacetag' not in st.session_state:
     st.session_state.spacetag = ''
 if 'peace_last_trigger' not in st.session_state:
     st.session_state.peace_last_trigger = 0
-if 'chroma_last_trigger' not in st.session_state:
-    st.session_state.chroma_last_trigger = 0
 if 'combo' not in st.session_state:
     st.session_state.combo = 0
 if 'last_collect_time' not in st.session_state:
     st.session_state.last_collect_time = 0
 if 'background_image_bytes' not in st.session_state:
     st.session_state.background_image_bytes = None
-if 'background_image' not in st.session_state:
-    st.session_state.background_image = None
 
 def reset_level():
     """Reset level with new moonrocks and background"""
@@ -113,11 +126,6 @@ def reset_level():
     bg_files = get_background_images(BACKGROUND_IMAGE_DIR)
     if bg_files and st.session_state.level <= len(bg_files):
         st.session_state.background_image_bytes = convert_image_to_bytes(bg_files[st.session_state.level - 1])
-        try:
-            from PIL import Image
-            st.session_state.background_image = Image.open(bg_files[st.session_state.level - 1])
-        except:
-            st.session_state.background_image = None
 
 def full_screen_background(image_bytes):
     if image_bytes:
@@ -132,9 +140,140 @@ def full_screen_background(image_bytes):
             </style>
         """, unsafe_allow_html=True)
 
-# No video processor needed for camera_input approach
+# Video Processor for WebRTC - OPTIMIZED
+class VideoProcessor(VideoProcessorBase):
+    def __init__(self):
+        self.hands = mp_hands.Hands(
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5,
+            max_num_hands=1  # Only track one hand for better performance
+        )
+        self.frame_count = 0
+        
+    def recv(self, frame):
+        try:
+            img = frame.to_ndarray(format="bgr24")
+            img = cv2.flip(img, 1)
+            
+            # Only process if playing
+            if st.session_state.game_state != 'playing':
+                return av.VideoFrame.from_ndarray(img, format="bgr24")
+            
+            # Apply background blend
+            if st.session_state.background_image_bytes:
+                try:
+                    bg_data = base64.b64decode(st.session_state.background_image_bytes)
+                    bg_array = np.frombuffer(bg_data, dtype=np.uint8)
+                    bg_img = cv2.imdecode(bg_array, cv2.IMREAD_COLOR)
+                    if bg_img is not None:
+                        bg_img = cv2.resize(bg_img, (img.shape[1], img.shape[0]))
+                        img = cv2.addWeighted(img, 0.3, bg_img, 0.7, 0)
+                except Exception as e:
+                    logger.error(f"Background blend error: {e}")
+            
+            # Draw moonrocks
+            for rock in st.session_state.moonrocks:
+                if not rock['collected']:
+                    cv2.circle(img, (rock['x'], rock['y']), 30, (255, 192, 203), -1)  # Pink moonrocks
+                    cv2.circle(img, (rock['x'], rock['y']), 32, (255, 105, 180), 3)  # Hot pink border
+            
+            # Process with MediaPipe
+            rgb_frame = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            result = self.hands.process(rgb_frame)
+            
+            if result.multi_hand_landmarks:
+                for hand_landmarks in result.multi_hand_landmarks:
+                    # Draw hand skeleton
+                    mp_drawing.draw_landmarks(
+                        img, hand_landmarks, mp_hands.HAND_CONNECTIONS,
+                        mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=3),
+                        mp_drawing.DrawingSpec(color=(255, 255, 255), thickness=2)
+                    )
+                    
+                    # Get index finger tip
+                    index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+                    h, w, _ = img.shape
+                    finger_x = int(index_tip.x * w)
+                    finger_y = int(index_tip.y * h)
+                    
+                    # Draw finger indicator
+                    cv2.circle(img, (finger_x, finger_y), 20, (34, 197, 94), -1)
+                    cv2.circle(img, (finger_x, finger_y), 22, (255, 255, 255), 2)
+                    
+                    # Collision detection
+                    current_time = time.time()
+                    for rock in st.session_state.moonrocks:
+                        if not rock['collected']:
+                            dist = np.sqrt((finger_x - rock['x'])**2 + (finger_y - rock['y'])**2)
+                            if dist < 50:
+                                rock['collected'] = True
+                                if current_time - st.session_state.last_collect_time < 2.0:
+                                    st.session_state.combo += 1
+                                else:
+                                    st.session_state.combo = 0
+                                points = 10 * (st.session_state.combo + 1)
+                                st.session_state.score += points
+                                st.session_state.last_collect_time = current_time
+                    
+                    # Easter egg - Peace sign
+                    index_pip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_PIP]
+                    middle_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
+                    middle_pip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_PIP]
+                    ring_tip = hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_TIP]
+                    ring_mcp = hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_MCP]
+                    pinky_tip = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP]
+                    pinky_mcp = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_MCP]
+                    
+                    index_extended = index_tip.y < index_pip.y
+                    middle_extended = middle_tip.y < middle_pip.y
+                    ring_curled = ring_tip.y > ring_mcp.y
+                    pinky_curled = pinky_tip.y > pinky_mcp.y
+                    
+                    if (index_extended and middle_extended and ring_curled and pinky_curled and
+                        current_time - st.session_state.peace_last_trigger > 5.0):
+                        st.session_state.score += 50
+                        st.session_state.peace_last_trigger = current_time
+                        cv2.putText(img, "PEACE! +50", (w//2 - 100, h//2), 
+                                  cv2.FONT_HERSHEY_DUPLEX, 2, (34, 197, 94), 3)
+            
+            # Draw UI overlay
+            elapsed = time.time() - st.session_state.start_time
+            remaining = max(0, LEVEL_TIME_LIMIT - elapsed)
+            
+            # Score and time
+            cv2.putText(img, f"Score: {st.session_state.score}", (10, 30),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            cv2.putText(img, f"Time: {int(remaining)}s", (10, 70),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            cv2.putText(img, f"Level: {st.session_state.level}", (10, 110),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            
+            # Combo display
+            if st.session_state.combo > 0:
+                cv2.putText(img, f"COMBO x{st.session_state.combo + 1}!", (10, 150),
+                           cv2.FONT_HERSHEY_SIMPLEX, 1, (34, 197, 94), 2)
+            
+            # Rocks remaining
+            rocks_left = sum(1 for r in st.session_state.moonrocks if not r['collected'])
+            cv2.putText(img, f"Rocks: {rocks_left}", (10, 190),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            
+            # Check win/lose conditions
+            if remaining <= 0:
+                if all(r['collected'] for r in st.session_state.moonrocks):
+                    st.session_state.game_state = 'level_complete'
+                else:
+                    st.session_state.game_state = 'level_failed'
+            elif all(r['collected'] for r in st.session_state.moonrocks):
+                st.session_state.game_state = 'level_complete'
+            
+            return av.VideoFrame.from_ndarray(img, format="bgr24")
+            
+        except Exception as e:
+            logger.error(f"Video processing error: {e}")
+            return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-# Custom CSS - FULL POLISH
+# Custom CSS
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;900&display=swap');
@@ -220,21 +359,6 @@ if st.session_state.game_state == 'title':
                 </div>
             """, unsafe_allow_html=True)
         
-        # Important notice for cloud version
-        st.warning("""
-            ⚠️ **IMPORTANT:** This cloud version has limited camera functionality due to browser restrictions.
-            
-            **For the full real-time experience, please run locally:**
-            ```bash
-            git clone https://github.com/gastondana627/lunar-loot.git
-            cd lunar-loot
-            pip install -r requirements.txt
-            streamlit run catching_moonrocks_ultimate.py
-            ```
-            
-            Or watch the demo video to see the full gameplay!
-        """)
-        
         spacetag = st.text_input("Enter your Spacetag", value=st.session_state.spacetag, placeholder="AstroHunter42")
         if spacetag:
             st.session_state.spacetag = spacetag
@@ -249,14 +373,14 @@ if st.session_state.game_state == 'title':
                     • Use your index finger to touch the moonrocks<br>
                     • Collect all rocks before time runs out<br>
                     • Progress through 14 space environments<br>
-                    • Find hidden gesture bonuses (peace sign, thumbs up)!
+                    • Find hidden gesture bonuses (peace sign +50!)
                 </p>
             </div>
         """, unsafe_allow_html=True)
         
-        st.info("📹 Camera Required: This game uses your webcam for hand tracking with Google MediaPipe AI.")
+        st.success("🚀 **WebRTC Enabled** - Real-time camera streaming with enhanced connection!")
         
-        if st.button("🚀 TRY CLOUD VERSION (Limited)", type="primary", use_container_width=True):
+        if st.button("🚀 START GAME", type="primary", use_container_width=True):
             reset_level()
             st.session_state.game_state = 'level_start'
             st.rerun()
@@ -291,7 +415,7 @@ elif st.session_state.game_state == 'level_start':
         
         st.markdown("</div>", unsafe_allow_html=True)
 
-# Playing State - COMPLETE VERSION
+# Playing State - WebRTC
 elif st.session_state.game_state == 'playing':
     st.markdown(f"""
         <h1 style='text-align: center; color: #6366f1;'>
@@ -299,137 +423,22 @@ elif st.session_state.game_state == 'playing':
         </h1>
     """, unsafe_allow_html=True)
     
-    elapsed = time.time() - st.session_state.start_time
-    remaining = max(0, LEVEL_TIME_LIMIT - elapsed)
+    st.info("📹 **Real-time Mode:** Your hand movements control the game instantly! Allow camera access when prompted.")
     
-    col1, col2 = st.columns([3, 1])
+    webrtc_ctx = webrtc_streamer(
+        key="lunar-loot-game",
+        mode=WebRtcMode.SENDRECV,
+        rtc_configuration=RTC_CONFIGURATION,
+        video_processor_factory=VideoProcessor,
+        media_stream_constraints={"video": {"width": 640, "height": 480}, "audio": False},
+        async_processing=True,
+    )
     
-    with col1:
-        st.info("📸 **Cloud Mode:** Take a photo with your hand visible, then click 'BEGIN MISSION' to process. For real-time gameplay, run locally!")
-        camera_image = st.camera_input("Show your hand to play", key="camera")
-        
-        if camera_image:
-            image = Image.open(camera_image)
-            frame = np.array(image)
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            frame = cv2.flip(frame, 1)
-            
-            # Apply background
-            if st.session_state.background_image_bytes:
-                try:
-                    bg_data = base64.b64decode(st.session_state.background_image_bytes)
-                    bg_array = np.frombuffer(bg_data, dtype=np.uint8)
-                    bg_img = cv2.imdecode(bg_array, cv2.IMREAD_COLOR)
-                    if bg_img is not None:
-                        bg_img = cv2.resize(bg_img, (frame.shape[1], frame.shape[0]))
-                        frame = cv2.addWeighted(frame, 0.3, bg_img, 0.7, 0)
-                except:
-                    pass
-            
-            # Draw moonrocks FIRST (before hand tracking)
-            for rock in st.session_state.moonrocks:
-                if not rock['collected']:
-                    # Draw moonrock with glow effect
-                    cv2.circle(frame, (rock['x'], rock['y']), 30, (255, 255, 255), -1)
-                    cv2.circle(frame, (rock['x'], rock['y']), 32, (99, 102, 241), 3)
-            
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5) as hands:
-                result = hands.process(rgb_frame)
-                
-                if result.multi_hand_landmarks:
-                    for hand_landmarks in result.multi_hand_landmarks:
-                        # Draw hand skeleton with custom colors
-                        mp_drawing.draw_landmarks(
-                            frame, 
-                            hand_landmarks, 
-                            mp_hands.HAND_CONNECTIONS,
-                            mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=3),
-                            mp_drawing.DrawingSpec(color=(255, 255, 255), thickness=2)
-                        )
-                        
-                        index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-                        h, w, _ = frame.shape
-                        finger_x = int(index_tip.x * w)
-                        finger_y = int(index_tip.y * h)
-                        
-                        # Draw finger indicator with glow
-                        cv2.circle(frame, (finger_x, finger_y), 20, (34, 197, 94), -1)
-                        cv2.circle(frame, (finger_x, finger_y), 22, (255, 255, 255), 2)
-                        
-                        # Collision detection with combo
-                        current_time = time.time()
-                        for rock in st.session_state.moonrocks:
-                            if not rock['collected']:
-                                dist = np.sqrt((finger_x - rock['x'])**2 + (finger_y - rock['y'])**2)
-                                if dist < 40:
-                                    rock['collected'] = True
-                                    
-                                    # Combo system
-                                    if current_time - st.session_state.last_collect_time < 2.0:
-                                        st.session_state.combo += 1
-                                    else:
-                                        st.session_state.combo = 0
-                                    
-                                    points = 10 * (st.session_state.combo + 1)
-                                    st.session_state.score += points
-                                    st.session_state.last_collect_time = current_time
-                        
-                        # Easter eggs
-                        index_pip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_PIP]
-                        middle_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
-                        middle_pip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_PIP]
-                        ring_tip = hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_TIP]
-                        ring_mcp = hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_MCP]
-                        pinky_tip = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP]
-                        pinky_mcp = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_MCP]
-                        
-                        index_extended = index_tip.y < index_pip.y
-                        middle_extended = middle_tip.y < middle_pip.y
-                        ring_curled = ring_tip.y > ring_mcp.y
-                        pinky_curled = pinky_tip.y > pinky_mcp.y
-                        
-                        if (index_extended and middle_extended and ring_curled and pinky_curled and
-                            current_time - st.session_state.peace_last_trigger > 5.0):
-                            st.session_state.score += 50
-                            st.session_state.peace_last_trigger = current_time
-                            cv2.putText(frame, "PEACE! +50", (w//2 - 100, h//2), 
-                                      cv2.FONT_HERSHEY_DUPLEX, 2, (34, 197, 94), 3)
-                
-                # Draw UI
-                cv2.putText(frame, f"Score: {st.session_state.score}", (10, 30),
-                           cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-                cv2.putText(frame, f"Time: {int(remaining)}s", (10, 70),
-                           cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-                if st.session_state.combo > 0:
-                    cv2.putText(frame, f"COMBO x{st.session_state.combo + 1}!", (10, 110),
-                               cv2.FONT_HERSHEY_SIMPLEX, 1, (34, 197, 94), 2)
-            
-            st.image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), use_container_width=True)
-    
+    col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
-        st.metric("Time", f"{int(remaining)}s")
-        st.metric("Rocks Left", sum(1 for r in st.session_state.moonrocks if not r['collected']))
-        st.metric("Combo", f"x{st.session_state.combo + 1}")
-        
-        if st.button("⏸️ PAUSE", use_container_width=True):
+        if st.button("⏸️ PAUSE GAME", use_container_width=True):
             st.session_state.game_state = 'title'
             st.rerun()
-    
-    # Check win/lose
-    if remaining <= 0:
-        if all(r['collected'] for r in st.session_state.moonrocks):
-            st.session_state.game_state = 'level_complete'
-            st.rerun()
-        else:
-            st.session_state.game_state = 'level_failed'
-            st.rerun()
-    elif all(r['collected'] for r in st.session_state.moonrocks):
-        st.session_state.game_state = 'level_complete'
-        st.rerun()
-    
-    time.sleep(0.1)
-    st.rerun()
 
 # Level Complete
 elif st.session_state.game_state == 'level_complete':
