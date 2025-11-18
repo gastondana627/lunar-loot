@@ -1252,7 +1252,7 @@ elif st.session_state.game_state == 'playing':
 cd lunar-loot
 pip install -r requirements.txt
 streamlit run catching_moonrocks.py""", language="bash")
-        st.video("YOUR_DEMO_VIDEO_URL")  # Add your YouTube demo
+        st.markdown("📹 **[Watch Demo Video](https://github.com/gastondana627/lunar-loot)** to see the game in action!")
         st.stop()
     
     while st.session_state.cap.isOpened() and st.session_state.game_state == 'playing':  # keep the main loop here
