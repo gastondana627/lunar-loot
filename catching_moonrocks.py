@@ -1,7 +1,9 @@
-## Lunar Loot - Ultimate Production Version
-## Created for Chroma Awards 2025  
+## Lunar Loot - AI-Powered Hand Tracking Game
+## Created for Chroma Awards 2025
 ## Tools: Google MediaPipe, Freepik, Adobe
-## COMPLETE VERSION - All Features
+## 
+## NOTE: For best experience, run locally with: streamlit run catching_moonrocks_ultimate.py
+## This cloud version has limited camera functionality due to browser restrictions
 
 import cv2
 import mediapipe as mp
@@ -218,6 +220,21 @@ if st.session_state.game_state == 'title':
                 </div>
             """, unsafe_allow_html=True)
         
+        # Important notice for cloud version
+        st.warning("""
+            ⚠️ **IMPORTANT:** This cloud version has limited camera functionality due to browser restrictions.
+            
+            **For the full real-time experience, please run locally:**
+            ```bash
+            git clone https://github.com/gastondana627/lunar-loot.git
+            cd lunar-loot
+            pip install -r requirements.txt
+            streamlit run catching_moonrocks_ultimate.py
+            ```
+            
+            Or watch the demo video to see the full gameplay!
+        """)
+        
         spacetag = st.text_input("Enter your Spacetag", value=st.session_state.spacetag, placeholder="AstroHunter42")
         if spacetag:
             st.session_state.spacetag = spacetag
@@ -232,14 +249,14 @@ if st.session_state.game_state == 'title':
                     • Use your index finger to touch the moonrocks<br>
                     • Collect all rocks before time runs out<br>
                     • Progress through 14 space environments<br>
-                    • Find hidden gesture bonuses!
+                    • Find hidden gesture bonuses (peace sign, thumbs up)!
                 </p>
             </div>
         """, unsafe_allow_html=True)
         
-        st.info("Camera Required: This game uses your webcam for hand tracking.")
+        st.info("📹 Camera Required: This game uses your webcam for hand tracking with Google MediaPipe AI.")
         
-        if st.button("🚀 START GAME", type="primary", use_container_width=True):
+        if st.button("🚀 TRY CLOUD VERSION (Limited)", type="primary", use_container_width=True):
             reset_level()
             st.session_state.game_state = 'level_start'
             st.rerun()
@@ -288,6 +305,7 @@ elif st.session_state.game_state == 'playing':
     col1, col2 = st.columns([3, 1])
     
     with col1:
+        st.info("📸 **Cloud Mode:** Take a photo with your hand visible, then click 'BEGIN MISSION' to process. For real-time gameplay, run locally!")
         camera_image = st.camera_input("Show your hand to play", key="camera")
         
         if camera_image:
