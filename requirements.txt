@@ -49,7 +49,7 @@ smmap==5.0.2
 sounddevice==0.5.1
 streamlit==1.43.0
 streamlit-webrtc==0.47.1
-av==10.0.0
+av==11.0.0
 tenacity==9.0.0
 toml==0.10.2
 tornado==6.4.2
