@@ -431,8 +431,14 @@ elif st.session_state.game_state == 'playing':
         rtc_configuration=RTC_CONFIGURATION,
         video_processor_factory=VideoProcessor,
         media_stream_constraints={"video": {"width": 640, "height": 480}, "audio": False},
-        async_processing=True,
+        async_processing=False,  # Disable async to avoid event loop issues
     )
+    
+    # Show connection status
+    if webrtc_ctx.state.playing:
+        st.success("✅ Camera connected! Game is live!")
+    elif webrtc_ctx.state.signalling:
+        st.warning("🔄 Connecting to camera...")
     
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
