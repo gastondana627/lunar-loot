@@ -40,6 +40,19 @@ RTC_CONFIGURATION = RTCConfiguration(
 # Game constants
 LEVEL_TIME_LIMIT = 30
 GAME_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKGROUND_IMAGE_DIR = os.path.join(GAME_ROOT_DIR, "backgrounds", "New_Background_Rotation_1")
+
+# Helper function to load background
+def load_background_image(level):
+    """Load background image for level"""
+    bg_path = os.path.join(BACKGROUND_IMAGE_DIR, f"{level}.png")
+    if os.path.exists(bg_path):
+        try:
+            with open(bg_path, 'rb') as f:
+                return base64.b64encode(f.read()).decode()
+        except:
+            pass
+    return None
 
 # Initialize MediaPipe
 mp_hands = mp.solutions.hands
@@ -48,6 +61,8 @@ mp_drawing = mp.solutions.drawing_utils
 # Session state initialization
 if 'game_state' not in st.session_state:
     st.session_state.game_state = 'title'
+if 'background_bytes' not in st.session_state:
+    st.session_state.background_bytes = None
 if 'score' not in st.session_state:
     st.session_state.score = 0
 if 'level' not in st.session_state:
@@ -72,7 +87,7 @@ if 'result_queue' not in st.session_state:
     st.session_state.result_queue = queue.Queue()
 
 def reset_level():
-    """Reset level with new moonrocks"""
+    """Reset level with new moonrocks and background"""
     st.session_state.moonrocks = []
     num_rocks = 5 + st.session_state.level
     for _ in range(num_rocks):
@@ -82,6 +97,8 @@ def reset_level():
             'collected': False
         })
     st.session_state.start_time = time.time()
+    # Load background for this level
+    st.session_state.background_bytes = load_background_image(st.session_state.level)
 
 # Video processor class for WebRTC
 class VideoProcessor:
@@ -96,6 +113,19 @@ class VideoProcessor:
         
         # Flip for mirror effect
         img = cv2.flip(img, 1)
+        
+        # Apply background if available (blend with camera feed)
+        if st.session_state.get('background_bytes'):
+            try:
+                bg_data = base64.b64decode(st.session_state.background_bytes)
+                bg_array = np.frombuffer(bg_data, dtype=np.uint8)
+                bg_img = cv2.imdecode(bg_array, cv2.IMREAD_COLOR)
+                if bg_img is not None:
+                    bg_img = cv2.resize(bg_img, (img.shape[1], img.shape[0]))
+                    # Blend: 30% camera, 70% background
+                    img = cv2.addWeighted(img, 0.3, bg_img, 0.7, 0)
+            except:
+                pass
         
         # Process with MediaPipe
         rgb_frame = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -195,16 +225,42 @@ st.markdown("""
 
 # Title Screen
 if st.session_state.game_state == 'title':
-    st.markdown("""
-        <div style="text-align: center; padding: 50px;">
-            <h1 style="font-size: 4rem; color: #6366f1; text-shadow: 0 0 20px rgba(99, 102, 241, 0.8);">
-                🌙 LUNAR LOOT 🌙
-            </h1>
-            <p style="font-size: 1.5rem; color: #cbd5e1;">
-                AI-Powered Hand Tracking Game
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
+    # Try to load logo
+    logo_path = os.path.join(GAME_ROOT_DIR, "ui_assets", "branding", "Lunar_Loot_Logo.png")
+    if os.path.exists(logo_path):
+        try:
+            with open(logo_path, 'rb') as f:
+                logo_bytes = base64.b64encode(f.read()).decode()
+            st.markdown(f"""
+                <div style="text-align: center; padding: 50px;">
+                    <img src="data:image/png;base64,{logo_bytes}" style="max-width: 500px; width: 80%;">
+                    <p style="font-size: 1.5rem; color: #cbd5e1; margin-top: 20px;">
+                        AI-Powered Hand Tracking Game
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+        except:
+            st.markdown("""
+                <div style="text-align: center; padding: 50px;">
+                    <h1 style="font-size: 4rem; color: #6366f1; text-shadow: 0 0 20px rgba(99, 102, 241, 0.8);">
+                        🌙 LUNAR LOOT 🌙
+                    </h1>
+                    <p style="font-size: 1.5rem; color: #cbd5e1;">
+                        AI-Powered Hand Tracking Game
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+            <div style="text-align: center; padding: 50px;">
+                <h1 style="font-size: 4rem; color: #6366f1; text-shadow: 0 0 20px rgba(99, 102, 241, 0.8);">
+                    🌙 LUNAR LOOT 🌙
+                </h1>
+                <p style="font-size: 1.5rem; color: #cbd5e1;">
+                    AI-Powered Hand Tracking Game
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
