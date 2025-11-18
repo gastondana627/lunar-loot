@@ -619,24 +619,17 @@ def display_start_screen():
             </div>
         """, unsafe_allow_html=True)
         
-        # Camera warning - more prominent
-        st.markdown("""
-            <div style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%); 
-                        padding: 20px; border-radius: 12px; 
-                        border: 2px solid rgba(251, 191, 36, 0.5); 
-                        margin: 20px 0; text-align: center;">
-                <p style="color: #fbbf24; font-size: 18px; font-weight: 600; margin: 0 0 10px 0;">
-                    📷 WEBCAM REQUIRED
-                </p>
-                <p style="color: #fde68a; font-size: 14px; margin: 0; line-height: 1.6;">
-                    This game uses AI hand tracking. When you click "Launch Mission",<br>
-                    your browser will ask for camera permission - please click <strong>Allow</strong>.
-                </p>
-                <p style="color: #cbd5e1; font-size: 12px; margin: 10px 0 0 0;">
-                    🔒 Privacy: All processing happens in your browser. No video is recorded or transmitted.
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
+        # Camera warning - simplified
+        st.warning("📷 **Webcam Required** - You'll need to enable camera access in your browser. All processing happens locally - no recording!")
+        
+        with st.expander("ℹ️ Camera Access Help"):
+            st.markdown("""
+            If prompted, click **Allow** for camera access.
+            
+            If you don't see a prompt, look for the camera icon 🎥 in your browser's address bar and enable it manually.
+            
+            **Privacy:** All hand tracking happens in your browser. Nothing is recorded or sent to any server.
+            """)
         
         # Browser compatibility
         st.markdown("""
@@ -1118,37 +1111,19 @@ if 'cap' not in st.session_state and st.session_state.game_state == 'playing':
 
     st.session_state.cap = cv2.VideoCapture(0)
     if not st.session_state.cap.isOpened():
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                    padding: 30px; border-radius: 15px; text-align: center; margin: 20px 0;">
-            <h2 style="color: white; margin-bottom: 20px;">📷 Camera Access Required</h2>
-            <p style="color: #f0f0f0; font-size: 16px; margin-bottom: 25px;">
-                This game uses AI hand tracking and needs access to your webcam.
-            </p>
-            <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; margin: 20px 0;">
-                <h3 style="color: white; margin-bottom: 15px;">How to Enable Camera:</h3>
-                <div style="text-align: left; color: #f0f0f0; line-height: 1.8;">
-                    <strong>Chrome/Brave:</strong><br>
-                    1. Click the 🔒 or camera icon in the address bar<br>
-                    2. Select "Allow" for Camera<br>
-                    3. Refresh this page<br><br>
-                    
-                    <strong>Safari:</strong><br>
-                    1. Safari → Settings → Websites → Camera<br>
-                    2. Find this site and select "Allow"<br>
-                    3. Refresh this page<br><br>
-                    
-                    <strong>Firefox:</strong><br>
-                    1. Click the camera icon in the address bar<br>
-                    2. Select "Allow"<br>
-                    3. Refresh this page
-                </div>
-            </div>
-            <p style="color: #ffd700; font-size: 14px; margin-top: 20px;">
-                🔒 Privacy: All processing happens in your browser. No video is recorded or transmitted.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.error("📷 Camera not accessible. Please enable camera permissions in your browser settings and refresh the page.")
+        st.info("💡 Tip: Look for the camera icon 🎥 or lock icon 🔒 in your browser's address bar, click it, and select 'Allow' for Camera.")
+        
+        with st.expander("🔧 Detailed Instructions"):
+            st.markdown("""
+            **Chrome/Brave/Edge:** Click the lock/camera icon in address bar → Allow Camera → Refresh
+            
+            **Safari:** Safari menu → Settings → Websites → Camera → Allow → Refresh
+            
+            **Firefox:** Click camera icon in address bar → Allow → Refresh
+            
+            **Privacy:** All processing happens locally in your browser. No video is recorded or transmitted.
+            """)
         st.stop()  # Stop execution
 
     st.session_state.video_width = int(st.session_state.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
