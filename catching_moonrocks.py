@@ -1,6 +1,7 @@
 ## Lunar Loot - AI-Powered Hand Tracking Game
 ## Created for Chroma Awards 2025
 ## Tools: Google MediaPipe, Freepik, Adobe
+## Production Ready - v1.0
 
 import cv2
 import mediapipe as mp
