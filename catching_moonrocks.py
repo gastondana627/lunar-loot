@@ -460,9 +460,9 @@ elif st.session_state.game_state == 'playing':
                         ctx.fillStyle = '#FFFFFF';
                         ctx.fillText(`Score: ${{score}}`, canvas.width/2 - 80, canvas.height/2 + 50);
                         
-                        // Send score back to Streamlit
+                        // Redirect to trigger level complete
                         setTimeout(() => {{
-                            window.parent.postMessage({{type: 'levelComplete', score: score}}, '*');
+                            window.top.location.href = window.top.location.pathname + '?game_result=complete&score=' + score;
                         }}, 2000);
                     }} else if (remaining <= 0 && !gameOver && !levelComplete) {{
                         gameOver = true;
@@ -493,7 +493,7 @@ elif st.session_state.game_state == 'playing':
                         ctx.fillText(`Rocks Remaining: ${{rocksLeft}}`, canvas.width/2 - 150, canvas.height/2 + 90);
                         
                         setTimeout(() => {{
-                            window.parent.postMessage({{type: 'gameFailed', score: score}}, '*');
+                            window.top.location.href = window.top.location.pathname + '?game_result=failed&score=' + score;
                         }}, 2000);
                     }}
                 }});
@@ -530,24 +530,27 @@ elif st.session_state.game_state == 'playing':
         """, unsafe_allow_html=True)
         
         st.write("")
-        if st.button("⏸️ PAUSE", use_container_width=True):
-            st.session_state.game_state = 'title'
+        if st.button("⏸️ PAUSE GAME", use_container_width=True):
+            st.session_state.game_state = 'level_start'
             st.rerun()
-        
-        st.write("")
-        st.write("")
-        
-        # Manual advance buttons (since postMessage doesn't work reliably)
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button("✅ Level Complete", use_container_width=True):
+    
+    # Check query parameters for game state updates
+    try:
+        import streamlit as st
+        query_params = st.query_params
+        if 'game_result' in query_params:
+            result = query_params['game_result']
+            if result == 'complete':
                 st.session_state.level += 1
-                st.session_state.game_state = 'level_start'
+                st.session_state.game_state = 'level_complete'
+                st.query_params.clear()
                 st.rerun()
-        with col_b:
-            if st.button("❌ Level Failed", use_container_width=True):
+            elif result == 'failed':
                 st.session_state.game_state = 'level_failed'
+                st.query_params.clear()
                 st.rerun()
+    except:
+        pass
 
 # ==================== LEVEL COMPLETE SCREEN ====================
 elif st.session_state.game_state == 'level_complete':
