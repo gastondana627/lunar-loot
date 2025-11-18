@@ -23,9 +23,18 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# WebRTC Configuration
+# WebRTC Configuration with TURN server for better connectivity
 RTC_CONFIGURATION = RTCConfiguration(
-    {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+    {
+        "iceServers": [
+            {"urls": ["stun:stun.l.google.com:19302"]},
+            {
+                "urls": ["turn:openrelay.metered.ca:80"],
+                "username": "openrelayproject",
+                "credential": "openrelayproject"
+            }
+        ]
+    }
 )
 
 # Game constants
