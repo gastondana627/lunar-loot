@@ -355,26 +355,36 @@ elif st.session_state.game_state == 'playing':
                 except:
                     pass
             
+            # Draw moonrocks FIRST (before hand tracking)
+            for rock in st.session_state.moonrocks:
+                if not rock['collected']:
+                    # Draw moonrock with glow effect
+                    cv2.circle(frame, (rock['x'], rock['y']), 30, (255, 255, 255), -1)
+                    cv2.circle(frame, (rock['x'], rock['y']), 32, (99, 102, 241), 3)
+            
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5) as hands:
                 result = hands.process(rgb_frame)
                 
-                # Draw moonrocks
-                for rock in st.session_state.moonrocks:
-                    if not rock['collected']:
-                        cv2.circle(frame, (rock['x'], rock['y']), 25, (200, 200, 200), -1)
-                        cv2.circle(frame, (rock['x'], rock['y']), 25, (99, 102, 241), 2)
-                
                 if result.multi_hand_landmarks:
                     for hand_landmarks in result.multi_hand_landmarks:
-                        mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                        # Draw hand skeleton with custom colors
+                        mp_drawing.draw_landmarks(
+                            frame, 
+                            hand_landmarks, 
+                            mp_hands.HAND_CONNECTIONS,
+                            mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=3),
+                            mp_drawing.DrawingSpec(color=(255, 255, 255), thickness=2)
+                        )
                         
                         index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
                         h, w, _ = frame.shape
                         finger_x = int(index_tip.x * w)
                         finger_y = int(index_tip.y * h)
                         
-                        cv2.circle(frame, (finger_x, finger_y), 15, (34, 197, 94), -1)
+                        # Draw finger indicator with glow
+                        cv2.circle(frame, (finger_x, finger_y), 20, (34, 197, 94), -1)
+                        cv2.circle(frame, (finger_x, finger_y), 22, (255, 255, 255), 2)
                         
                         # Collision detection with combo
                         current_time = time.time()
