@@ -203,18 +203,26 @@ elif st.session_state.game_state == 'level_start':
 
 # ==================== PLAYING STATE ====================
 elif st.session_state.game_state == 'playing':
-    st.markdown(f"""
-        <h1 style='text-align: center; color: #6366f1; margin-bottom: 10px;'>
-            LEVEL {st.session_state.level}: {SECTOR_NAMES.get(st.session_state.level, 'Unknown')} | SCORE: {st.session_state.score}
-        </h1>
-    """, unsafe_allow_html=True)
-    
-    # Get background for this level
+    # Full screen space background
     bg_bytes = load_background(st.session_state.level)
+    if bg_bytes:
+        st.markdown(f"""
+            <style>
+            .stApp {{
+                background-image: url(data:image/png;base64,{bg_bytes});
+                background-size: cover;
+                background-position: center;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
+    
     bg_data_url = f"data:image/png;base64,{bg_bytes}" if bg_bytes else ""
     
     # Calculate rocks for this level
     num_rocks = 5 + st.session_state.level
+    
+    # Layout: Video on left, Score panel on right
+    col1, col2 = st.columns([3, 1])
     
     # JavaScript MediaPipe Game with ALL features
     game_html = f"""
@@ -396,28 +404,19 @@ elif st.session_state.game_state == 'playing':
                         }}
                     }}
                     
-                    // Draw UI overlay
+                    // Update game state for external UI
                     const elapsed = (Date.now() - startTime) / 1000;
                     const remaining = Math.max(0, LEVEL_TIME - elapsed);
-                    
-                    // UI Panel
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                    ctx.fillRect(10, 10, 250, combo > 0 ? 160 : 130);
-                    
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.font = 'bold 24px Orbitron';
-                    ctx.fillText(`Score: ${{score}}`, 20, 40);
-                    ctx.fillText(`Time: ${{Math.floor(remaining)}}s`, 20, 75);
-                    
                     const rocksLeft = moonrocks.filter(r => !r.collected).length;
-                    ctx.fillText(`Rocks: ${{rocksLeft}}`, 20, 110);
                     
-                    // Combo display
-                    if (combo > 0) {{
-                        ctx.fillStyle = '#22C55E';
-                        ctx.font = 'bold 28px Orbitron';
-                        ctx.fillText(`COMBO x${{combo + 1}}!`, 20, 145);
-                    }}
+                    // Send state to parent for UI display
+                    window.parent.postMessage({{
+                        type: 'gameState',
+                        score: score,
+                        time: Math.floor(remaining),
+                        rocks: rocksLeft,
+                        combo: combo
+                    }}, '*');
                     
                     // Check win/lose conditions
                     if (rocksLeft === 0 && !levelComplete) {{
@@ -467,10 +466,23 @@ elif st.session_state.game_state == 'playing':
         </html>
     """
     
-    components.html(game_html, height=700)
+    with col1:
+        components.html(game_html, height=600)
     
-    col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
-        if st.button("⏸️ PAUSE GAME", use_container_width=True):
+        # Score Panel (like in your screenshots)
+        st.markdown(f"""
+            <div style="background: rgba(10, 14, 39, 0.9); padding: 20px; border-radius: 12px; 
+                        border: 2px solid rgba(99, 102, 241, 0.5); margin-top: 20px;">
+                <h2 style="color: #6366f1; margin: 0 0 20px 0;">{st.session_state.spacetag or 'Player'}</h2>
+                <p style="font-size: 1.5rem; margin: 10px 0;"><strong>Score:</strong> <span style="color: #22C55E;">{st.session_state.score}</span></p>
+                <p style="font-size: 1.5rem; margin: 10px 0;"><strong>Level:</strong> {st.session_state.level}</p>
+                <p style="font-size: 1.5rem; margin: 10px 0; color: #EF4444;"><strong>Time:</strong> <span id="timeDisplay">30s</span></p>
+                <p style="font-size: 1.5rem; margin: 10px 0;"><strong>Rocks:</strong> <span id="rocksDisplay">{num_rocks}</span></p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.write("")
+        if st.button("⏸️ PAUSE", use_container_width=True):
             st.session_state.game_state = 'title'
             st.rerun()
