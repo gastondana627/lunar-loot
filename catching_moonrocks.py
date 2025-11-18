@@ -533,3 +533,97 @@ elif st.session_state.game_state == 'playing':
         if st.button("⏸️ PAUSE", use_container_width=True):
             st.session_state.game_state = 'title'
             st.rerun()
+        
+        st.write("")
+        st.write("")
+        
+        # Manual advance buttons (since postMessage doesn't work reliably)
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("✅ Level Complete", use_container_width=True):
+                st.session_state.level += 1
+                st.session_state.game_state = 'level_start'
+                st.rerun()
+        with col_b:
+            if st.button("❌ Level Failed", use_container_width=True):
+                st.session_state.game_state = 'level_failed'
+                st.rerun()
+
+# ==================== LEVEL COMPLETE SCREEN ====================
+elif st.session_state.game_state == 'level_complete':
+    bg_bytes = load_background(st.session_state.level - 1)
+    if bg_bytes:
+        st.markdown(f"""
+            <style>
+            .stApp {{
+                background-image: url(data:image/png;base64,{bg_bytes});
+                background-size: cover;
+                background-position: center;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+            <div style="background: rgba(10, 14, 39, 0.9); padding: 40px; border-radius: 12px; 
+                        text-align: center; backdrop-filter: blur(12px); border: 2px solid rgba(34, 197, 94, 0.5);">
+        """, unsafe_allow_html=True)
+        
+        logo_bytes = load_logo()
+        if logo_bytes:
+            st.markdown(f"""
+                <img src="data:image/png;base64,{logo_bytes}" 
+                     style="max-width: 400px; width: 70%; animation: pulse 2s ease-in-out infinite;">
+            """, unsafe_allow_html=True)
+        
+        st.markdown(f"<h1 style='color: #22c55e; margin: 20px 0;'>★ Level {st.session_state.level - 1} Complete!</h1>", 
+                    unsafe_allow_html=True)
+        st.markdown(f"<p style='color: #f8fafc; font-size: 20px;'><strong>Score:</strong> {st.session_state.score}</p>", 
+                    unsafe_allow_html=True)
+        
+        st.success("▶ Preparing next sector...")
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    import time
+    time.sleep(2)
+    st.session_state.game_state = 'level_start'
+    st.rerun()
+
+# ==================== LEVEL FAILED SCREEN ====================
+elif st.session_state.game_state == 'level_failed':
+    bg_bytes = load_background(st.session_state.level)
+    if bg_bytes:
+        st.markdown(f"""
+            <style>
+            .stApp {{
+                background-image: url(data:image/png;base64,{bg_bytes});
+                background-size: cover;
+                background-position: center;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown(f"""
+            <div style="background: rgba(10, 14, 39, 0.9); padding: 40px; border-radius: 20px; 
+                        text-align: center; backdrop-filter: blur(10px); border: 2px solid rgba(239, 68, 68, 0.5);">
+                <h1 style="font-size: 3rem; color: #ef4444;">TIME'S UP!</h1>
+                <h2 style="color: #cbd5e1;">Final Score: {st.session_state.score}</h2>
+                <h3 style="color: #cbd5e1;">Levels Completed: {st.session_state.level - 1}</h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.write("")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("🔄 RETRY LEVEL", type="primary", use_container_width=True):
+                st.session_state.game_state = 'level_start'
+                st.rerun()
+        with col_b:
+            if st.button("🏠 MAIN MENU", use_container_width=True):
+                st.session_state.score = 0
+                st.session_state.level = 1
+                st.session_state.game_state = 'title'
+                st.rerun()
