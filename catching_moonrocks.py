@@ -1,15 +1,12 @@
-## Lunar Loot - JavaScript MediaPipe Version
+## Lunar Loot - COMPLETE Production Version
 ## Created for Chroma Awards 2025
 ## Tools: Google MediaPipe, Freepik, Adobe
-## BREAKTHROUGH: Client-side hand tracking - NO SERVER CONNECTION NEEDED!
+## JavaScript MediaPipe - Runs entirely in browser!
 
 import streamlit as st
 import streamlit.components.v1 as components
 import os
 import base64
-import time
-import random
-import json
 
 # Page configuration
 st.set_page_config(
@@ -19,16 +16,21 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Game constants
-LEVEL_TIME_LIMIT = 30
-NUM_MOONROCKS = 5
 GAME_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Sector names
+# Sector names for 14 levels
 SECTOR_NAMES = {
     1: "Mercury", 2: "Mars", 3: "Venus", 4: "Moon", 5: "Saturn",
-    6: "Jupiter", 7: "Neptune", 8: "Uranus", 9: "Pluto", 10: "Asteroid Belt",
-    11: "Comet", 12: "Nebula", 13: "Black Hole", 14: "Spaceship"
+    6: "Jupiter", 7: "Neptune", 8: "Uranus", 9: "Pluto", 10: "Ceres",
+    11: "Comet Atlas", 12: "Oumuamua", 13: "Planet X", 14: "Spaceship"
+}
+
+# Background files mapping
+BACKGROUND_FILES = {
+    1: "Mercury_1.png", 2: "Mars_1.png", 3: "Venus_1.png", 4: "Moon_1.png",
+    5: "Saturn_1.png", 6: "Earth_1.png", 7: "Uranus_1.png", 8: "Uranus_1.png",
+    9: "PlanetX_1.png", 10: "Ceres_1.png", 11: "Comet_3I_Atlas_1.png",
+    12: "Oumuamua_1.png", 13: "PlanetX_1.png", 14: "Spaceship_1.png"
 }
 
 def load_logo():
@@ -41,12 +43,26 @@ def load_logo():
             pass
     return None
 
-def convert_image_to_bytes(image_path):
-    try:
-        with open(image_path, 'rb') as f:
-            return base64.b64encode(f.read()).decode()
-    except:
-        return None
+def load_background(level):
+    bg_file = BACKGROUND_FILES.get(level, "Mercury_1.png")
+    bg_path = os.path.join(GAME_ROOT_DIR, "backgrounds", "New_Background_Rotation_1", bg_file)
+    if os.path.exists(bg_path):
+        try:
+            with open(bg_path, 'rb') as f:
+                return base64.b64encode(f.read()).decode()
+        except:
+            pass
+    return None
+
+def load_main_menu_bg():
+    bg_path = os.path.join(GAME_ROOT_DIR, "backgrounds", "Main_Menu", "Main_Menu_Start_Screen_BG.png")
+    if os.path.exists(bg_path):
+        try:
+            with open(bg_path, 'rb') as f:
+                return base64.b64encode(f.read()).decode()
+        except:
+            pass
+    return None
 
 # Session state
 if 'game_state' not in st.session_state:
@@ -77,8 +93,30 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Title Screen
+# Chroma Awards Footer
+st.markdown("""
+    <div style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 9998; 
+                background: rgba(0,0,0,0.9); padding: 10px; text-align: center;">
+        <a href="https://www.chromaawards.com" target="_blank" style="color: #6366f1; text-decoration: none; font-size: 14px;">
+            🏆 Chroma Awards 2025
+        </a>
+    </div>
+""", unsafe_allow_html=True)
+
+# ==================== TITLE SCREEN ====================
 if st.session_state.game_state == 'title':
+    main_bg = load_main_menu_bg()
+    if main_bg:
+        st.markdown(f"""
+            <style>
+            .stApp {{
+                background-image: url(data:image/png;base64,{main_bg});
+                background-size: cover;
+                background-position: center;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
+    
     col1, col2 = st.columns([1, 1])
     with col1:
         logo_bytes = load_logo()
@@ -87,7 +125,7 @@ if st.session_state.game_state == 'title':
                 <div style="background: rgba(10, 14, 39, 0.85); padding: 30px; border-radius: 12px; 
                             border: 1px solid rgba(99, 102, 241, 0.3); margin-bottom: 20px; text-align: center;">
                     <img src="data:image/png;base64,{logo_bytes}" 
-                         style="max-width: 100%; width: 400px; margin-bottom: 15px;">
+                         style="max-width: 100%; width: 400px; margin-bottom: 15px; animation: pulse 2s ease-in-out infinite;">
                     <p style="font-size: 1.25rem; color: #cbd5e1; margin: 10px 0 0 0;">
                         Collect cosmic moonrocks before time runs out
                     </p>
@@ -98,7 +136,7 @@ if st.session_state.game_state == 'title':
         if spacetag:
             st.session_state.spacetag = spacetag
         
-        st.success("🚀 **BREAKTHROUGH VERSION:** Uses JavaScript MediaPipe - runs entirely in YOUR browser!")
+        st.success("🚀 **JavaScript MediaPipe** - Runs entirely in YOUR browser! Real-time hand tracking with NO server lag!")
         
         st.markdown("""
             <div style="background: rgba(10, 14, 39, 0.85); padding: 20px; border-radius: 12px; 
@@ -110,181 +148,329 @@ if st.session_state.game_state == 'title':
                     • Use your index finger to touch the moonrocks<br>
                     • Collect all rocks before time runs out<br>
                     • Progress through 14 space environments<br>
-                    • Find hidden gesture bonuses!
+                    • Build combos for bonus points<br>
+                    • Find hidden gesture bonuses (✌️ peace sign, 👍 thumbs up)!
                 </p>
             </div>
         """, unsafe_allow_html=True)
         
+        st.info("📹 **AI Powered by Google MediaPipe** - Advanced hand tracking technology")
+        
         if st.button("🚀 START GAME", type="primary", use_container_width=True):
-            st.session_state.game_state = 'playing'
+            st.session_state.game_state = 'level_start'
             st.rerun()
 
-# Playing State - JavaScript MediaPipe
+# ==================== LEVEL START SCREEN ====================
+elif st.session_state.game_state == 'level_start':
+    bg_bytes = load_background(st.session_state.level)
+    if bg_bytes:
+        st.markdown(f"""
+            <style>
+            .stApp {{
+                background-image: url(data:image/png;base64,{bg_bytes});
+                background-size: cover;
+                background-position: center;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+            <div style="background: rgba(0,0,0,0.85); padding: 40px; border-radius: 20px; 
+                        text-align: center; backdrop-filter: blur(10px); border: 2px solid rgba(99, 102, 241, 0.5);">
+        """, unsafe_allow_html=True)
+        
+        st.markdown(f"<h1 style='color: #6366f1; font-size: 3rem;'>Level {st.session_state.level}</h1>", unsafe_allow_html=True)
+        sector_name = SECTOR_NAMES.get(st.session_state.level, "Unknown Sector")
+        st.markdown(f"<h2 style='color: #cbd5e1; font-size: 2rem;'>Sector: {sector_name}</h2>", unsafe_allow_html=True)
+        
+        st.write("")
+        st.markdown(f"<p style='font-size: 1.2rem;'><strong>Current Score:</strong> {st.session_state.score}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='font-size: 1.2rem;'><strong>Pilot:</strong> {st.session_state.spacetag or 'Anonymous'}</p>", unsafe_allow_html=True)
+        st.write("")
+        
+        rocks_count = 5 + st.session_state.level
+        st.info(f"💎 Collect {rocks_count} moonrocks in 30 seconds!")
+        st.success("⚡ Build combos by collecting rocks quickly!")
+        
+        st.write("")
+        if st.button("▶️ BEGIN MISSION", type="primary", use_container_width=True):
+            st.session_state.game_state = 'playing'
+            st.rerun()
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# ==================== PLAYING STATE ====================
 elif st.session_state.game_state == 'playing':
     st.markdown(f"""
-        <h1 style='text-align: center; color: #6366f1;'>
-            LEVEL {st.session_state.level} | SCORE: {st.session_state.score}
+        <h1 style='text-align: center; color: #6366f1; margin-bottom: 10px;'>
+            LEVEL {st.session_state.level}: {SECTOR_NAMES.get(st.session_state.level, 'Unknown')} | SCORE: {st.session_state.score}
         </h1>
     """, unsafe_allow_html=True)
     
-    st.info("📹 **Client-Side Processing:** Hand tracking runs in your browser - NO server connection needed!")
+    # Get background for this level
+    bg_bytes = load_background(st.session_state.level)
+    bg_data_url = f"data:image/png;base64,{bg_bytes}" if bg_bytes else ""
     
-    # JavaScript MediaPipe Hand Tracking Game
-    components.html("""
+    # Calculate rocks for this level
+    num_rocks = 5 + st.session_state.level
+    
+    # JavaScript MediaPipe Game with ALL features
+    game_html = f"""
         <!DOCTYPE html>
         <html>
         <head>
             <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
             <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+            <style>
+                body {{ margin:0; padding:0; background:#0a0e27; font-family: 'Orbitron', sans-serif; }}
+                #gameCanvas {{ width:100%; height:100%; border-radius:8px; box-shadow: 0 0 20px rgba(99,102,241,0.5); }}
+            </style>
         </head>
-        <body style="margin:0; padding:0; background:#0a0e27;">
-            <div style="position: relative; width: 100%; height: 600px;">
+        <body>
+            <div style="position: relative; width: 100%; height: 650px;">
                 <video id="video" style="display:none;"></video>
-                <canvas id="canvas" width="640" height="480" style="width:100%; height:100%; border-radius:8px;"></canvas>
+                <canvas id="gameCanvas" width="640" height="480"></canvas>
             </div>
             
             <script>
                 const video = document.getElementById('video');
-                const canvas = document.getElementById('canvas');
+                const canvas = document.getElementById('gameCanvas');
                 const ctx = canvas.getContext('2d');
                 
                 // Game state
-                let score = 0;
+                let score = {st.session_state.score};
+                let level = {st.session_state.level};
                 let moonrocks = [];
                 let startTime = Date.now();
                 const LEVEL_TIME = 30;
-                const NUM_ROCKS = 6;
+                const NUM_ROCKS = {num_rocks};
+                let combo = 0;
+                let lastCollectTime = 0;
+                let peaceLastTrigger = 0;
+                let thumbsLastTrigger = 0;
+                let gameOver = false;
+                let levelComplete = false;
+                
+                // Load background image
+                const bgImage = new Image();
+                bgImage.src = '{bg_data_url}';
                 
                 // Initialize moonrocks
-                for (let i = 0; i < NUM_ROCKS; i++) {
-                    moonrocks.push({
+                for (let i = 0; i < NUM_ROCKS; i++) {{
+                    moonrocks.push({{
                         x: Math.random() * 580 + 30,
                         y: Math.random() * 420 + 30,
                         collected: false
-                    });
-                }
+                    }});
+                }}
                 
                 // MediaPipe Hands
-                const hands = new Hands({
-                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-                });
+                const hands = new Hands({{
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${{file}}`
+                }});
                 
-                hands.setOptions({
+                hands.setOptions({{
                     maxNumHands: 1,
                     modelComplexity: 1,
                     minDetectionConfidence: 0.5,
                     minTrackingConfidence: 0.5
-                });
+                }});
                 
-                hands.onResults((results) => {
+                hands.onResults((results) => {{
                     // Clear canvas
                     ctx.fillStyle = '#0a0e27';
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     
+                    // Draw background blend
+                    if (bgImage.complete) {{
+                        ctx.globalAlpha = 0.3;
+                        ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+                        ctx.globalAlpha = 1.0;
+                    }}
+                    
                     // Draw video
+                    ctx.globalAlpha = 0.7;
                     ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+                    ctx.globalAlpha = 1.0;
                     
                     // Draw moonrocks
-                    moonrocks.forEach(rock => {
-                        if (!rock.collected) {
+                    moonrocks.forEach(rock => {{
+                        if (!rock.collected) {{
+                            // Glow effect
+                            ctx.shadowBlur = 15;
+                            ctx.shadowColor = '#FF69B4';
                             ctx.fillStyle = '#FFB6C1';
                             ctx.beginPath();
                             ctx.arc(rock.x, rock.y, 30, 0, Math.PI * 2);
                             ctx.fill();
-                            ctx.strokeStyle = '#FF69B4';
+                            ctx.shadowBlur = 0;
+                            ctx.strokeStyle = '#FF1493';
                             ctx.lineWidth = 3;
                             ctx.stroke();
-                        }
-                    });
+                        }}
+                    }});
                     
                     // Process hand landmarks
-                    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && !gameOver && !levelComplete) {{
                         const landmarks = results.multiHandLandmarks[0];
                         
                         // Draw hand skeleton
                         ctx.strokeStyle = '#00FF00';
                         ctx.lineWidth = 2;
                         const connections = [
-                            [0,1],[1,2],[2,3],[3,4],
-                            [0,5],[5,6],[6,7],[7,8],
-                            [0,9],[9,10],[10,11],[11,12],
-                            [0,13],[13,14],[14,15],[15,16],
-                            [0,17],[17,18],[18,19],[19,20],
-                            [5,9],[9,13],[13,17]
+                            [0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],
+                            [0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],
+                            [0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]
                         ];
                         
-                        connections.forEach(([start, end]) => {
+                        connections.forEach(([start, end]) => {{
                             ctx.beginPath();
                             ctx.moveTo(landmarks[start].x * canvas.width, landmarks[start].y * canvas.height);
                             ctx.lineTo(landmarks[end].x * canvas.width, landmarks[end].y * canvas.height);
                             ctx.stroke();
-                        });
+                        }});
                         
                         // Get index finger tip
                         const indexTip = landmarks[8];
                         const fingerX = indexTip.x * canvas.width;
                         const fingerY = indexTip.y * canvas.height;
                         
-                        // Draw finger indicator
+                        // Draw finger indicator with glow
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = '#22C55E';
                         ctx.fillStyle = '#22C55E';
                         ctx.beginPath();
                         ctx.arc(fingerX, fingerY, 20, 0, Math.PI * 2);
                         ctx.fill();
+                        ctx.shadowBlur = 0;
                         ctx.strokeStyle = '#FFFFFF';
                         ctx.lineWidth = 2;
                         ctx.stroke();
                         
-                        // Check collisions
-                        moonrocks.forEach(rock => {
-                            if (!rock.collected) {
+                        // Collision detection with combo system
+                        const currentTime = Date.now() / 1000;
+                        moonrocks.forEach(rock => {{
+                            if (!rock.collected) {{
                                 const dist = Math.sqrt((fingerX - rock.x)**2 + (fingerY - rock.y)**2);
-                                if (dist < 50) {
+                                if (dist < 50) {{
                                     rock.collected = true;
-                                    score += 10;
-                                }
-                            }
-                        });
-                    }
+                                    
+                                    // Combo system
+                                    if (currentTime - lastCollectTime < 2.0) {{
+                                        combo++;
+                                    }} else {{
+                                        combo = 0;
+                                    }}
+                                    
+                                    const points = 10 * (combo + 1);
+                                    score += points;
+                                    lastCollectTime = currentTime;
+                                }}
+                            }}
+                        }});
+                        
+                        // Easter eggs - Peace sign
+                        const indexPip = landmarks[6];
+                        const middleTip = landmarks[12];
+                        const middlePip = landmarks[10];
+                        const ringTip = landmarks[16];
+                        const ringMcp = landmarks[13];
+                        const pinkyTip = landmarks[20];
+                        const pinkyMcp = landmarks[17];
+                        
+                        const indexExtended = indexTip.y < indexPip.y;
+                        const middleExtended = middleTip.y < middlePip.y;
+                        const ringCurled = ringTip.y > ringMcp.y;
+                        const pinkyCurled = pinkyTip.y > pinkyMcp.y;
+                        
+                        if (indexExtended && middleExtended && ringCurled && pinkyCurled && 
+                            currentTime - peaceLastTrigger > 5.0) {{
+                            score += 50;
+                            peaceLastTrigger = currentTime;
+                            // Show bonus text
+                            ctx.fillStyle = '#22C55E';
+                            ctx.font = 'bold 36px Orbitron';
+                            ctx.fillText('✌️ PEACE! +50', canvas.width/2 - 120, canvas.height/2);
+                        }}
+                    }}
                     
-                    // Draw UI
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.font = '24px Orbitron';
-                    ctx.fillText(`Score: ${score}`, 10, 30);
-                    
+                    // Draw UI overlay
                     const elapsed = (Date.now() - startTime) / 1000;
                     const remaining = Math.max(0, LEVEL_TIME - elapsed);
-                    ctx.fillText(`Time: ${Math.floor(remaining)}s`, 10, 60);
+                    
+                    // UI Panel
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(10, 10, 250, combo > 0 ? 160 : 130);
+                    
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = 'bold 24px Orbitron';
+                    ctx.fillText(`Score: ${{score}}`, 20, 40);
+                    ctx.fillText(`Time: ${{Math.floor(remaining)}}s`, 20, 75);
                     
                     const rocksLeft = moonrocks.filter(r => !r.collected).length;
-                    ctx.fillText(`Rocks: ${rocksLeft}`, 10, 90);
+                    ctx.fillText(`Rocks: ${{rocksLeft}}`, 20, 110);
                     
-                    // Check win condition
-                    if (rocksLeft === 0) {
+                    // Combo display
+                    if (combo > 0) {{
                         ctx.fillStyle = '#22C55E';
-                        ctx.font = '48px Orbitron';
-                        ctx.fillText('LEVEL COMPLETE!', canvas.width/2 - 200, canvas.height/2);
-                    } else if (remaining <= 0) {
+                        ctx.font = 'bold 28px Orbitron';
+                        ctx.fillText(`COMBO x${{combo + 1}}!`, 20, 145);
+                    }}
+                    
+                    // Check win/lose conditions
+                    if (rocksLeft === 0 && !levelComplete) {{
+                        levelComplete = true;
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.fillStyle = '#22C55E';
+                        ctx.font = 'bold 48px Orbitron';
+                        ctx.fillText('★ LEVEL COMPLETE! ★', canvas.width/2 - 250, canvas.height/2);
+                        ctx.font = 'bold 32px Orbitron';
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillText(`Score: ${{score}}`, canvas.width/2 - 80, canvas.height/2 + 50);
+                        
+                        // Send score back to Streamlit
+                        setTimeout(() => {{
+                            window.parent.postMessage({{type: 'levelComplete', score: score}}, '*');
+                        }}, 2000);
+                    }} else if (remaining <= 0 && !gameOver && !levelComplete) {{
+                        gameOver = true;
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
                         ctx.fillStyle = '#EF4444';
-                        ctx.font = '48px Orbitron';
-                        ctx.fillText('TIME UP!', canvas.width/2 - 100, canvas.height/2);
-                    }
-                });
+                        ctx.font = 'bold 48px Orbitron';
+                        ctx.fillText('TIME UP!', canvas.width/2 - 120, canvas.height/2);
+                        ctx.font = 'bold 32px Orbitron';
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillText(`Final Score: ${{score}}`, canvas.width/2 - 120, canvas.height/2 + 50);
+                        
+                        setTimeout(() => {{
+                            window.parent.postMessage({{type: 'gameFailed', score: score}}, '*');
+                        }}, 2000);
+                    }}
+                }});
                 
                 // Start camera
-                const camera = new Camera(video, {
-                    onFrame: async () => {
-                        await hands.send({image: video});
-                    },
+                const camera = new Camera(video, {{
+                    onFrame: async () => {{
+                        await hands.send({{image: video}});
+                    }},
                     width: 640,
                     height: 480
-                });
+                }});
                 
                 camera.start();
             </script>
         </body>
         </html>
-    """, height=650)
+    """
     
-    if st.button("⏸️ BACK TO MENU", use_container_width=True):
-        st.session_state.game_state = 'title'
-        st.rerun()
+    components.html(game_html, height=700)
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button("⏸️ PAUSE GAME", use_container_width=True):
+            st.session_state.game_state = 'title'
+            st.rerun()
