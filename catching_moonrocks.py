@@ -64,6 +64,16 @@ def load_main_menu_bg():
             pass
     return None
 
+def load_moonrock_image():
+    moonrock_path = os.path.join(GAME_ROOT_DIR, "moonrock.png")
+    if os.path.exists(moonrock_path):
+        try:
+            with open(moonrock_path, 'rb') as f:
+                return base64.b64encode(f.read()).decode()
+        except:
+            pass
+    return None
+
 # Session state
 if 'game_state' not in st.session_state:
     st.session_state.game_state = 'title'
@@ -224,6 +234,10 @@ elif st.session_state.game_state == 'playing':
     # Layout: Video on left, Score panel on right
     col1, col2 = st.columns([3, 1])
     
+    # Load moonrock image
+    moonrock_img_data = load_moonrock_image()
+    moonrock_data_url = f"data:image/png;base64,{moonrock_img_data}" if moonrock_img_data else ""
+    
     # JavaScript MediaPipe Game with ALL features
     game_html = f"""
         <!DOCTYPE html>
@@ -260,10 +274,15 @@ elif st.session_state.game_state == 'playing':
                 let thumbsLastTrigger = 0;
                 let gameOver = false;
                 let levelComplete = false;
+                let snapshotTaken = false;
                 
                 // Load background image
                 const bgImage = new Image();
                 bgImage.src = '{bg_data_url}';
+                
+                // Load moonrock image
+                const moonrockImage = new Image();
+                moonrockImage.src = '{moonrock_data_url}';
                 
                 // Initialize moonrocks
                 for (let i = 0; i < NUM_ROCKS; i++) {{
@@ -303,20 +322,15 @@ elif st.session_state.game_state == 'playing':
                     ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
                     ctx.globalAlpha = 1.0;
                     
-                    // Draw moonrocks
+                    // Draw moonrocks with actual image
                     moonrocks.forEach(rock => {{
-                        if (!rock.collected) {{
+                        if (!rock.collected && moonrockImage.complete) {{
                             // Glow effect
                             ctx.shadowBlur = 15;
                             ctx.shadowColor = '#FF69B4';
-                            ctx.fillStyle = '#FFB6C1';
-                            ctx.beginPath();
-                            ctx.arc(rock.x, rock.y, 30, 0, Math.PI * 2);
-                            ctx.fill();
+                            // Draw moonrock image
+                            ctx.drawImage(moonrockImage, rock.x - 30, rock.y - 30, 60, 60);
                             ctx.shadowBlur = 0;
-                            ctx.strokeStyle = '#FF1493';
-                            ctx.lineWidth = 3;
-                            ctx.stroke();
                         }}
                     }});
                     
@@ -421,7 +435,23 @@ elif st.session_state.game_state == 'playing':
                     // Check win/lose conditions
                     if (rocksLeft === 0 && !levelComplete) {{
                         levelComplete = true;
-                        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                        
+                        // Take snapshot before overlay
+                        if (!snapshotTaken) {{
+                            const snapshotCanvas = document.createElement('canvas');
+                            snapshotCanvas.width = canvas.width;
+                            snapshotCanvas.height = canvas.height;
+                            const snapCtx = snapshotCanvas.getContext('2d');
+                            snapCtx.drawImage(canvas, 0, 0);
+                            const snapshotData = snapshotCanvas.toDataURL('image/png');
+                            window.parent.postMessage({{type: 'snapshot', data: snapshotData}}, '*');
+                            snapshotTaken = true;
+                        }}
+                        
+                        // GREEN overlay for success
+                        ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                         ctx.fillRect(0, 0, canvas.width, canvas.height);
                         ctx.fillStyle = '#22C55E';
                         ctx.font = 'bold 48px Orbitron';
@@ -436,7 +466,23 @@ elif st.session_state.game_state == 'playing':
                         }}, 2000);
                     }} else if (remaining <= 0 && !gameOver && !levelComplete) {{
                         gameOver = true;
-                        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                        
+                        // Take snapshot before overlay
+                        if (!snapshotTaken) {{
+                            const snapshotCanvas = document.createElement('canvas');
+                            snapshotCanvas.width = canvas.width;
+                            snapshotCanvas.height = canvas.height;
+                            const snapCtx = snapshotCanvas.getContext('2d');
+                            snapCtx.drawImage(canvas, 0, 0);
+                            const snapshotData = snapshotCanvas.toDataURL('image/png');
+                            window.parent.postMessage({{type: 'snapshot', data: snapshotData}}, '*');
+                            snapshotTaken = true;
+                        }}
+                        
+                        // RED overlay for failure
+                        ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                         ctx.fillRect(0, 0, canvas.width, canvas.height);
                         ctx.fillStyle = '#EF4444';
                         ctx.font = 'bold 48px Orbitron';
@@ -444,6 +490,7 @@ elif st.session_state.game_state == 'playing':
                         ctx.font = 'bold 32px Orbitron';
                         ctx.fillStyle = '#FFFFFF';
                         ctx.fillText(`Final Score: ${{score}}`, canvas.width/2 - 120, canvas.height/2 + 50);
+                        ctx.fillText(`Rocks Remaining: ${{rocksLeft}}`, canvas.width/2 - 150, canvas.height/2 + 90);
                         
                         setTimeout(() => {{
                             window.parent.postMessage({{type: 'gameFailed', score: score}}, '*');
