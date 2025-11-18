@@ -1,6 +1,6 @@
 ## Lunar Loot - AI-Powered Hand Tracking Game
 ## Created for Chroma Awards 2025
-## Tools: Google MediaPipe, ElevenLabs, Freepik
+## Tools: Google MediaPipe, Freepik, Adobe
 
 import cv2
 import mediapipe as mp
@@ -379,9 +379,9 @@ def display_title_screen():
             <div style="background: rgba(10, 14, 39, 0.8); padding: 20px; border-radius: 12px; 
                         border: 1px solid rgba(99, 102, 241, 0.3); backdrop-filter: blur(12px);
                         text-align: center; margin-top: 30px;">
-                <p style="color: #6366f1; font-size: 14px; margin: 5px 0;">AI POWERED BY</p>
+                <p style="color: #6366f1; font-size: 14px; margin: 5px 0;">POWERED BY</p>
                 <p style="color: #f8fafc; font-size: 12px; margin: 5px 0;">
-                    Google MediaPipe • Freepik • ElevenLabs • Adobe
+                    Google MediaPipe • Freepik • Adobe
                 </p>
             </div>
         """, unsafe_allow_html=True)
@@ -432,15 +432,14 @@ def display_about_screen():
                 
                 <h3 style="color: #f8fafc; margin-top: 25px;">🎁 Easter Eggs</h3>
                 <p style="color: #cbd5e1; line-height: 1.8;">
-                    • ❤️ Make a heart with both hands: +50 points<br>
-                    • 👍 Give a thumbs up: +100 points + Chroma Awards shoutout!
+                    • ✌️ Peace sign (2 fingers up): +50 points<br>
+                    • 👍 Thumbs up: +100 points + Chroma Awards shoutout!
                 </p>
                 
                 <h3 style="color: #f8fafc; margin-top: 25px;">🤖 AI Technology</h3>
                 <p style="color: #cbd5e1; line-height: 1.8;">
                     • <strong>Google MediaPipe:</strong> Real-time hand tracking<br>
                     • <strong>Freepik AI:</strong> Space-themed visuals<br>
-                    • <strong>ElevenLabs:</strong> Audio generation<br>
                     • <strong>Adobe:</strong> Editing and polish
                 </p>
                 
@@ -687,8 +686,8 @@ def display_start_screen():
     <p style="color: #e2e8f0; font-weight: 600; margin-bottom: 8px;">AI Technology Stack:</p>
     <p style="color: #cbd5e1; margin: 0; line-height: 1.6;">
         • Google MediaPipe — Hand Tracking<br>
-        • ElevenLabs — Sound Effects<br>
-        • Freepik — Space Assets
+        • Freepik — Space Assets<br>
+        • Adobe — Editing & Polish
     </p>
 </div>
         """, unsafe_allow_html=True)
@@ -1073,10 +1072,10 @@ if 'flash_effect' not in st.session_state:
     st.session_state.flash_effect = None
 if 'music_enabled' not in st.session_state:
     st.session_state.music_enabled = True
-if 'heart_bonus_given' not in st.session_state:
-    st.session_state.heart_bonus_given = False
-if 'chroma_bonus_given' not in st.session_state:
-    st.session_state.chroma_bonus_given = False
+if 'peace_last_trigger' not in st.session_state:
+    st.session_state.peace_last_trigger = 0
+if 'chroma_last_trigger' not in st.session_state:
+    st.session_state.chroma_last_trigger = 0
 
 #Added encoding
 if 'animation_bytes' not in st.session_state:
@@ -1284,44 +1283,56 @@ elif st.session_state.game_state == 'playing':
             st.rerun()
 
         if result.multi_hand_landmarks:
-            # Easter egg: Detect heart gesture (two hands close together)
-            if len(result.multi_hand_landmarks) == 2:
-                hand1 = result.multi_hand_landmarks[0]
-                hand2 = result.multi_hand_landmarks[1]
+            # Easter egg: Detect peace sign (✌️)
+            for hand_landmarks in result.multi_hand_landmarks:
+                # Get finger tips and bases
+                index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+                index_pip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_PIP]
+                middle_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
+                middle_pip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_PIP]
+                ring_tip = hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_TIP]
+                ring_mcp = hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_MCP]
+                pinky_tip = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP]
+                pinky_mcp = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_MCP]
                 
-                # Get thumb tips from both hands
-                thumb1 = hand1.landmark[mp_hands.HandLandmark.THUMB_TIP]
-                thumb2 = hand2.landmark[mp_hands.HandLandmark.THUMB_TIP]
+                # Peace sign: index and middle extended, ring and pinky curled
+                index_extended = index_tip.y < index_pip.y
+                middle_extended = middle_tip.y < middle_pip.y
+                ring_curled = ring_tip.y > ring_mcp.y
+                pinky_curled = pinky_tip.y > pinky_mcp.y
                 
-                # Calculate distance between thumbs
-                thumb_distance = ((thumb1.x - thumb2.x) ** 2 + (thumb1.y - thumb2.y) ** 2) ** 0.5
+                # Detect peace sign with cooldown
+                current_time = time.time()
+                peace_cooldown = st.session_state.get('peace_last_trigger', 0)
                 
-                # Debug: Draw line between thumbs (optional - shows detection)
-                thumb1_px = (int(thumb1.x * st.session_state.video_width), int(thumb1.y * st.session_state.video_height))
-                thumb2_px = (int(thumb2.x * st.session_state.video_width), int(thumb2.y * st.session_state.video_height))
-                
-                # If thumbs are close (heart gesture), give bonus!
-                if thumb_distance < 0.2 and not st.session_state.get('heart_bonus_given'):  # Made more forgiving (0.2 instead of 0.15)
-                    st.session_state.score += 50
-                    st.session_state.flash_effect = "heart"
-                    st.session_state.heart_bonus_given = True
-                    
-                    # Draw indicator on frame
-                    cv2.circle(frame, thumb1_px, 20, (255, 105, 180), -1)
-                    cv2.circle(frame, thumb2_px, 20, (255, 105, 180), -1)
-                    cv2.line(frame, thumb1_px, thumb2_px, (255, 105, 180), 5)
-                    
-                    # Play special sound
-                    with audio_placeholder:
-                        components.html("""
-                            <audio autoplay>
-                                <source src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" type="audio/mpeg">
-                            </audio>
-                        """, height=0)
-                
-                # Reset bonus flag if hands separate
-                if thumb_distance > 0.25:
-                    st.session_state.heart_bonus_given = False
+                if index_extended and middle_extended and ring_curled and pinky_curled:
+                    # Only trigger if cooldown has passed (5 seconds)
+                    if current_time - peace_cooldown > 5.0:
+                        st.session_state.score += 50
+                        st.session_state.flash_effect = "peace"
+                        st.session_state.peace_last_trigger = current_time
+                        
+                        # Draw BIG visual indicator on frame (centered)
+                        text = "PEACE! +50"
+                        font_scale = 3
+                        thickness = 5
+                        font = cv2.FONT_HERSHEY_DUPLEX
+                        (text_width, text_height), _ = cv2.getTextSize(text, font, font_scale, thickness)
+                        x = (st.session_state.video_width - text_width) // 2
+                        y = (st.session_state.video_height + text_height) // 2
+                        # Draw background rectangle
+                        cv2.rectangle(frame, (x-20, y-text_height-20), (x+text_width+20, y+20), (0, 0, 0), -1)
+                        # Draw text
+                        cv2.putText(frame, text, (x, y), font, font_scale, (34, 197, 94), thickness)
+                        
+                        # Play special sound
+                        with audio_placeholder:
+                            components.html("""
+                                <audio autoplay>
+                                    <source src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" type="audio/mpeg">
+                                </audio>
+                            """, height=0)
+                        break
             
             # Easter egg: Detect thumbs up for Chroma Awards shoutout!
             for hand_landmarks in result.multi_hand_landmarks:
@@ -1334,23 +1345,38 @@ elif st.session_state.game_state == 'playing':
                 thumb_extended = thumb_tip.y < thumb_ip.y - 0.05
                 fingers_curled = index_tip.y > index_mcp.y
                 
-                if thumb_extended and fingers_curled and not st.session_state.get('chroma_bonus_given'):
-                    st.session_state.score += 100
-                    st.session_state.flash_effect = "chroma"
-                    st.session_state.chroma_bonus_given = True
-                    
-                    # Play epic sound
-                    with audio_placeholder:
-                        components.html("""
-                            <audio autoplay>
-                                <source src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" type="audio/mpeg">
-                            </audio>
-                        """, height=0)
-                    break
+                # Detect thumbs up with cooldown
+                current_time = time.time()
+                chroma_cooldown = st.session_state.get('chroma_last_trigger', 0)
                 
-                # Reset if thumb goes down
-                if not thumb_extended:
-                    st.session_state.chroma_bonus_given = False
+                if thumb_extended and fingers_curled:
+                    # Only trigger if cooldown has passed (5 seconds)
+                    if current_time - chroma_cooldown > 5.0:
+                        st.session_state.score += 100
+                        st.session_state.flash_effect = "chroma"
+                        st.session_state.chroma_last_trigger = current_time
+                        
+                        # Draw BIG visual indicator on frame (centered)
+                        text = "CHROMA AWARDS! +100"
+                        font_scale = 2.5
+                        thickness = 5
+                        font = cv2.FONT_HERSHEY_DUPLEX
+                        (text_width, text_height), _ = cv2.getTextSize(text, font, font_scale, thickness)
+                        x = (st.session_state.video_width - text_width) // 2
+                        y = (st.session_state.video_height + text_height) // 2
+                        # Draw background rectangle
+                        cv2.rectangle(frame, (x-20, y-text_height-20), (x+text_width+20, y+20), (0, 0, 0), -1)
+                        # Draw text
+                        cv2.putText(frame, text, (x, y), font, font_scale, (99, 102, 241), thickness)
+                        
+                        # Play epic sound
+                        with audio_placeholder:
+                            components.html("""
+                                <audio autoplay>
+                                    <source src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" type="audio/mpeg">
+                                </audio>
+                            """, height=0)
+                        break
             
             for hand_landmarks in result.multi_hand_landmarks:
                 index_finger = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
@@ -1456,24 +1482,24 @@ elif st.session_state.game_state == 'playing':
             </style>
             """
             st.session_state.flash_effect = None
-        elif st.session_state.flash_effect == "heart":
+        elif st.session_state.flash_effect == "peace":
             flash_html = """
             <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                        font-size: 120px; z-index: 50; animation: heartPop 1s ease-out;
-                        pointer-events: none; text-shadow: 0 0 20px rgba(255,105,180,0.8);">
-                ❤️
+                        font-size: 120px; z-index: 50; animation: peacePop 1s ease-out;
+                        pointer-events: none; text-shadow: 0 0 20px rgba(34,197,94,0.8);">
+                ✌️
             </div>
             <div style="position: fixed; top: 20%; left: 50%; transform: translateX(-50%);
-                        background: rgba(255,105,180,0.9); padding: 15px 30px; border-radius: 25px;
+                        background: rgba(34,197,94,0.9); padding: 15px 30px; border-radius: 25px;
                         z-index: 51; animation: bonusPop 1s ease-out; pointer-events: none;
-                        box-shadow: 0 4px 20px rgba(255,105,180,0.5);">
-                <p style="color: white; margin: 0; font-size: 24px; font-weight: bold;">+50 BONUS!</p>
+                        box-shadow: 0 4px 20px rgba(34,197,94,0.5);">
+                <p style="color: white; margin: 0; font-size: 24px; font-weight: bold;">✌️ +50 PEACE BONUS!</p>
             </div>
             <style>
-                @keyframes heartPop {
-                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
-                    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
-                    100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+                @keyframes peacePop {
+                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0) rotate(-20deg); }
+                    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2) rotate(10deg); }
+                    100% { opacity: 0; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
                 }
                 @keyframes bonusPop {
                     0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
