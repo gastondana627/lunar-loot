@@ -359,7 +359,16 @@ def display_title_screen():
             st.title("LUNAR LOOT")
         
         st.write("")
-        st.write("")
+        
+        # Camera requirement notice
+        st.markdown("""
+            <div style="background: rgba(99, 102, 241, 0.15); padding: 15px; border-radius: 8px; 
+                        border: 1px solid rgba(99, 102, 241, 0.4); margin-bottom: 20px;">
+                <p style="color: #fbbf24; font-size: 14px; margin: 0; text-align: center;">
+                    📷 <strong>Webcam Required</strong> - Please allow camera access when prompted
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
         
         # Menu buttons
         if st.button("▶ BEGIN GAME", type="primary", use_container_width=True, key="begin_game"):
@@ -610,8 +619,24 @@ def display_start_screen():
             </div>
         """, unsafe_allow_html=True)
         
-        # Camera warning
-        st.info("Camera Required: This game uses your webcam for hand tracking. Please grant camera permissions when prompted.")
+        # Camera warning - more prominent
+        st.markdown("""
+            <div style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%); 
+                        padding: 20px; border-radius: 12px; 
+                        border: 2px solid rgba(251, 191, 36, 0.5); 
+                        margin: 20px 0; text-align: center;">
+                <p style="color: #fbbf24; font-size: 18px; font-weight: 600; margin: 0 0 10px 0;">
+                    📷 WEBCAM REQUIRED
+                </p>
+                <p style="color: #fde68a; font-size: 14px; margin: 0; line-height: 1.6;">
+                    This game uses AI hand tracking. When you click "Launch Mission",<br>
+                    your browser will ask for camera permission - please click <strong>Allow</strong>.
+                </p>
+                <p style="color: #cbd5e1; font-size: 12px; margin: 10px 0 0 0;">
+                    🔒 Privacy: All processing happens in your browser. No video is recorded or transmitted.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
         
         # Browser compatibility
         st.markdown("""
@@ -1093,8 +1118,37 @@ if 'cap' not in st.session_state and st.session_state.game_state == 'playing':
 
     st.session_state.cap = cv2.VideoCapture(0)
     if not st.session_state.cap.isOpened():
-        st.error("Camera access required. Please grant camera permissions in your browser and refresh the page.")
-        st.info("Note: This game requires a webcam to play. Make sure your browser has camera permissions enabled.")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 30px; border-radius: 15px; text-align: center; margin: 20px 0;">
+            <h2 style="color: white; margin-bottom: 20px;">📷 Camera Access Required</h2>
+            <p style="color: #f0f0f0; font-size: 16px; margin-bottom: 25px;">
+                This game uses AI hand tracking and needs access to your webcam.
+            </p>
+            <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; margin: 20px 0;">
+                <h3 style="color: white; margin-bottom: 15px;">How to Enable Camera:</h3>
+                <div style="text-align: left; color: #f0f0f0; line-height: 1.8;">
+                    <strong>Chrome/Brave:</strong><br>
+                    1. Click the 🔒 or camera icon in the address bar<br>
+                    2. Select "Allow" for Camera<br>
+                    3. Refresh this page<br><br>
+                    
+                    <strong>Safari:</strong><br>
+                    1. Safari → Settings → Websites → Camera<br>
+                    2. Find this site and select "Allow"<br>
+                    3. Refresh this page<br><br>
+                    
+                    <strong>Firefox:</strong><br>
+                    1. Click the camera icon in the address bar<br>
+                    2. Select "Allow"<br>
+                    3. Refresh this page
+                </div>
+            </div>
+            <p style="color: #ffd700; font-size: 14px; margin-top: 20px;">
+                🔒 Privacy: All processing happens in your browser. No video is recorded or transmitted.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         st.stop()  # Stop execution
 
     st.session_state.video_width = int(st.session_state.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
