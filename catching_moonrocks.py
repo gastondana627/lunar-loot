@@ -1108,42 +1108,17 @@ if 'animation_bytes' not in st.session_state:
         st.error("Animation file not found. Check your directory")
 
 # --- Camera Setup & Initialization ---
-if 'cap' not in st.session_state and st.session_state.game_state == 'playing':
-    if 'OPENCV_AVFOUNDATION_SKIP_AUTH' not in os.environ:
-        print("Warning: OPENCV_AVFOUNDATION_SKIP_AUTH not set. Camera auth may fail.")
+# Use WebRTC for browser camera access (works on Streamlit Cloud)
+if 'use_webrtc' not in st.session_state:
+    st.session_state.use_webrtc = True  # Always use WebRTC in production
 
-    st.session_state.cap = cv2.VideoCapture(0)
-    if not st.session_state.cap.isOpened():
-        st.error("📷 Camera not accessible on Streamlit Cloud")
-        
-        st.markdown("""
-        ### 🎮 Play Locally for Best Experience
-        
-        Due to Streamlit Cloud's architecture, camera access works best when running locally:
-        
-        ```bash
-        # Quick setup (2 minutes):
-        git clone https://github.com/gastondana627/lunar-loot.git
-        cd lunar-loot
-        pip install -r requirements.txt
-        streamlit run catching_moonrocks.py
-        ```
-        
-        The game will open at `localhost:8501` with full camera access!
-        
-        **Why?** Streamlit uses server-side OpenCV which can't access browser cameras directly. 
-        This is a known limitation of CV apps on Streamlit Cloud.
-        """)
-        
-        st.info("💡 **For Judges:** Demo video available in submission showing full gameplay!")
-        st.stop()  # Stop execution
-
-    st.session_state.video_width = int(st.session_state.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    st.session_state.video_height = int(st.session_state.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    if st.session_state.video_width == 0 or st.session_state.video_width == 0:
-        st.session_state.video_width, st.session_state.video_height = 640, 480
-
-    reset_level()  # Generate initial run
+if st.session_state.game_state == 'playing':
+    if 'video_width' not in st.session_state:
+        st.session_state.video_width = 640
+        st.session_state.video_height = 480
+    
+    if 'cap' not in st.session_state:
+        reset_level()  # Generate initial run
 
 # --- Load Moonrock Image (CACHED) ---
 if 'moonrock_img' not in st.session_state:
