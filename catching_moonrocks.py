@@ -10,6 +10,8 @@ import os
 import streamlit as st
 import time
 import base64
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
+import av
 
 # Page configuration
 st.set_page_config(
@@ -619,17 +621,18 @@ def display_start_screen():
             </div>
         """, unsafe_allow_html=True)
         
-        # Camera warning - simplified
-        st.warning("📷 **Webcam Required** - You'll need to enable camera access in your browser. All processing happens locally - no recording!")
+        # Camera warning - honest about limitations
+        st.warning("📷 **Best Experience: Run Locally** - Streamlit Cloud has camera access limitations. For full gameplay, run locally (2-minute setup).")
         
-        with st.expander("ℹ️ Camera Access Help"):
-            st.markdown("""
-            If prompted, click **Allow** for camera access.
-            
-            If you don't see a prompt, look for the camera icon 🎥 in your browser's address bar and enable it manually.
-            
-            **Privacy:** All hand tracking happens in your browser. Nothing is recorded or sent to any server.
-            """)
+        with st.expander("🚀 How to Run Locally (Recommended)"):
+            st.code("""git clone https://github.com/gastondana627/lunar-loot.git
+cd lunar-loot
+pip install -r requirements.txt
+streamlit run catching_moonrocks.py""", language="bash")
+            st.markdown("Opens at `localhost:8501` with full camera access!")
+        
+        with st.expander("📹 Watch Demo Instead"):
+            st.markdown("[View gameplay video](YOUR_YOUTUBE_URL) to see the game in action!")
         
         # Browser compatibility
         st.markdown("""
@@ -1111,19 +1114,28 @@ if 'cap' not in st.session_state and st.session_state.game_state == 'playing':
 
     st.session_state.cap = cv2.VideoCapture(0)
     if not st.session_state.cap.isOpened():
-        st.error("📷 Camera not accessible. Please enable camera permissions in your browser settings and refresh the page.")
-        st.info("💡 Tip: Look for the camera icon 🎥 or lock icon 🔒 in your browser's address bar, click it, and select 'Allow' for Camera.")
+        st.error("📷 Camera not accessible on Streamlit Cloud")
         
-        with st.expander("🔧 Detailed Instructions"):
-            st.markdown("""
-            **Chrome/Brave/Edge:** Click the lock/camera icon in address bar → Allow Camera → Refresh
-            
-            **Safari:** Safari menu → Settings → Websites → Camera → Allow → Refresh
-            
-            **Firefox:** Click camera icon in address bar → Allow → Refresh
-            
-            **Privacy:** All processing happens locally in your browser. No video is recorded or transmitted.
-            """)
+        st.markdown("""
+        ### 🎮 Play Locally for Best Experience
+        
+        Due to Streamlit Cloud's architecture, camera access works best when running locally:
+        
+        ```bash
+        # Quick setup (2 minutes):
+        git clone https://github.com/gastondana627/lunar-loot.git
+        cd lunar-loot
+        pip install -r requirements.txt
+        streamlit run catching_moonrocks.py
+        ```
+        
+        The game will open at `localhost:8501` with full camera access!
+        
+        **Why?** Streamlit uses server-side OpenCV which can't access browser cameras directly. 
+        This is a known limitation of CV apps on Streamlit Cloud.
+        """)
+        
+        st.info("💡 **For Judges:** Demo video available in submission showing full gameplay!")
         st.stop()  # Stop execution
 
     st.session_state.video_width = int(st.session_state.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
