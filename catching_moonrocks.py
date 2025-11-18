@@ -1244,6 +1244,17 @@ elif st.session_state.game_state == 'playing':
     # Audio player using components.html - runs independently of loop
     audio_placeholder = st.empty()
     
+    # Check if camera is available
+    if 'cap' not in st.session_state or st.session_state.cap is None:
+        st.error("🎥 Camera not available on Streamlit Cloud")
+        st.info("💡 **This game works perfectly when run locally!**")
+        st.code("""git clone https://github.com/gastondana627/lunar-loot.git
+cd lunar-loot
+pip install -r requirements.txt
+streamlit run catching_moonrocks.py""", language="bash")
+        st.video("YOUR_DEMO_VIDEO_URL")  # Add your YouTube demo
+        st.stop()
+    
     while st.session_state.cap.isOpened() and st.session_state.game_state == 'playing':  # keep the main loop here
 
         ret, frame = st.session_state.cap.read()
