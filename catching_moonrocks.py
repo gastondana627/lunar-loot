@@ -452,15 +452,7 @@ elif st.session_state.game_state == 'playing':
                         const ringCurled = ringTip.y > ringMcp.y;
                         const pinkyCurled = pinkyTip.y > pinkyMcp.y;
                         
-                        // Peace sign gesture
-                        if (indexExtended && middleExtended && ringCurled && pinkyCurled && 
-                            currentTime - peaceLastTrigger > 5.0) {{
-                            score += 50;
-                            peaceLastTrigger = currentTime;
-                            peaceDisplayUntil = currentTime + 2.0; // Display for 2 seconds
-                        }}
-                        
-                        // Thumbs up gesture
+                        // Thumbs up gesture (check FIRST - more specific)
                         const thumb = landmarks[4];
                         const thumbExtended = thumb.y < landmarks[2].y;
                         const allFingersCurled = !indexExtended && !middleExtended && ringCurled && pinkyCurled;
@@ -469,6 +461,15 @@ elif st.session_state.game_state == 'playing':
                             score += 100;
                             thumbsLastTrigger = currentTime;
                             thumbsDisplayUntil = currentTime + 2.0; // Display for 2 seconds
+                            peaceDisplayUntil = 0; // Cancel peace display
+                        }}
+                        // Peace sign gesture (check SECOND - less specific)
+                        else if (indexExtended && middleExtended && ringCurled && pinkyCurled && 
+                            currentTime - peaceLastTrigger > 5.0 && !thumbExtended) {{
+                            score += 50;
+                            peaceLastTrigger = currentTime;
+                            peaceDisplayUntil = currentTime + 2.0; // Display for 2 seconds
+                            thumbsDisplayUntil = 0; // Cancel thumbs display
                         }}
                     }}
                     
@@ -651,53 +652,77 @@ elif st.session_state.game_state == 'playing':
     # Auto-advance polling mechanism
     auto_advance_html = """
         <script>
-        // Poll for game completion every 500ms
-        setInterval(() => {
-            const iframe = window.parent.document.querySelector('iframe[title="streamlit_component"]');
-            if (iframe && iframe.contentWindow) {
-                try {
-                    const result = localStorage.getItem('lunar_loot_result');
-                    const snapshot = localStorage.getItem('lunar_loot_snapshot');
-                    const rocksLeft = localStorage.getItem('lunar_loot_rocks');
+        let pollCount = 0;
+        const maxPolls = 40; // 20 seconds max
+        
+        const pollInterval = setInterval(() => {
+            pollCount++;
+            
+            try {
+                const result = localStorage.getItem('lunar_loot_result');
+                const rocksLeft = localStorage.getItem('lunar_loot_rocks');
+                
+                if (result) {
+                    console.log('Found result:', result, 'rocks:', rocksLeft);
                     
-                    if (result) {
-                        // Clear localStorage
-                        localStorage.removeItem('lunar_loot_result');
-                        const snapshotData = localStorage.getItem('lunar_loot_snapshot');
-                        const rocksData = localStorage.getItem('lunar_loot_rocks');
-                        localStorage.removeItem('lunar_loot_snapshot');
-                        localStorage.removeItem('lunar_loot_rocks');
-                        
-                        // Find and click the appropriate button
-                        const buttons = window.parent.document.querySelectorAll('button');
-                        buttons.forEach(btn => {
-                            const text = btn.textContent || btn.innerText;
-                            if (result === 'complete' && text.includes('🎯')) {
-                                btn.click();
-                            } else if (result === 'failed' && text.includes('⏱️')) {
-                                btn.click();
-                            }
-                        });
-                    }
-                } catch(e) {
-                    console.log('Polling error:', e);
+                    // Clear localStorage
+                    localStorage.removeItem('lunar_loot_result');
+                    localStorage.removeItem('lunar_loot_rocks');
+                    
+                    // Find and click the appropriate button in parent document
+                    const buttons = document.querySelectorAll('button');
+                    let clicked = false;
+                    
+                    buttons.forEach(btn => {
+                        const text = btn.textContent || btn.innerText || '';
+                        if (result === 'complete' && (text.includes('🎯') || text.includes('AUTO_COMPLETE')) && !clicked) {
+                            console.log('Clicking complete button:', text);
+                            btn.click();
+                            clicked = true;
+                            clearInterval(pollInterval);
+                        } else if (result === 'failed' && (text.includes('⏱️') || text.includes('AUTO_FAIL')) && !clicked) {
+                            console.log('Clicking fail button:', text);
+                            btn.click();
+                            clicked = true;
+                            clearInterval(pollInterval);
+                        }
+                    });
                 }
+                
+                if (pollCount >= maxPolls) {
+                    clearInterval(pollInterval);
+                }
+            } catch(e) {
+                console.log('Polling error:', e);
             }
         }, 500);
         </script>
     """
     components.html(auto_advance_html, height=0)
     
-    # Hidden trigger buttons
+    # Auto-trigger buttons (hidden with CSS but clickable by script)
+    st.markdown("""
+        <style>
+        button[kind="secondary"]:has(p:contains("🎯")),
+        button[kind="secondary"]:has(p:contains("⏱️")) {
+            position: absolute;
+            left: -9999px;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🎯", key="auto_complete", use_container_width=False):
+        if st.button("🎯 AUTO_COMPLETE", key="auto_complete", use_container_width=False):
             st.session_state.score += 100  # Bonus for completing
             st.session_state.level += 1
             st.session_state.game_state = 'level_complete'
             st.rerun()
     with col2:
-        if st.button("⏱️", key="auto_fail", use_container_width=False):
+        if st.button("⏱️ AUTO_FAIL", key="auto_fail", use_container_width=False):
             # Get rocks remaining from localStorage if available
             try:
                 rocks_str = st.query_params.get('rocks', '0')
