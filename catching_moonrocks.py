@@ -1050,6 +1050,14 @@ elif st.session_state.game_state == 'level_failed':
                 background: rgba(10, 14, 39, 0.85);
                 z-index: 0;
             }}
+            /* Hide any iframes or components from previous state */
+            iframe, .stMarkdown iframe {{
+                display: none !important;
+            }}
+            /* Ensure clean screen */
+            .stApp > div:first-child {{
+                overflow: hidden !important;
+            }}
             </style>
         """, unsafe_allow_html=True)
     
