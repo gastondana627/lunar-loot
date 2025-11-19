@@ -87,6 +87,8 @@ if 'snapshot' not in st.session_state:
     st.session_state.snapshot = None
 if 'rocks_remaining' not in st.session_state:
     st.session_state.rocks_remaining = 0
+if 'is_resuming' not in st.session_state:
+    st.session_state.is_resuming = False
 
 # Custom CSS
 st.markdown("""
@@ -234,7 +236,10 @@ elif st.session_state.game_state == 'level_start':
         st.success("⚡ Build combos by collecting rocks quickly!")
         
         st.write("")
-        if st.button("▶️ BEGIN MISSION", type="primary", use_container_width=True):
+        # Show "RESUME" if coming from pause, otherwise "BEGIN"
+        button_text = "▶️ RESUME MISSION" if st.session_state.is_resuming else "▶️ BEGIN MISSION"
+        if st.button(button_text, type="primary", use_container_width=True):
+            st.session_state.is_resuming = False  # Reset flag
             st.session_state.game_state = 'playing'
             st.rerun()
         
@@ -649,6 +654,12 @@ elif st.session_state.game_state == 'playing':
     st.write("")
     st.success("🎮 Game will automatically advance when timer expires or all rocks are collected!")
     
+    # Pause button only
+    if st.button("⏸️ PAUSE GAME", use_container_width=True, key="pause_btn"):
+        st.session_state.is_resuming = True  # Set flag for resume
+        st.session_state.game_state = 'level_start'
+        st.rerun()
+    
     # Auto-advance polling mechanism
     auto_advance_html = """
         <script>
@@ -700,16 +711,11 @@ elif st.session_state.game_state == 'playing':
     """
     components.html(auto_advance_html, height=0)
     
-    # Auto-trigger buttons (hidden with CSS but clickable by script)
+    # Hidden auto-trigger buttons (completely invisible to users)
     st.markdown("""
         <style>
-        button[kind="secondary"]:has(p:contains("🎯")),
-        button[kind="secondary"]:has(p:contains("⏱️")) {
-            position: absolute;
-            left: -9999px;
-            width: 1px;
-            height: 1px;
-            opacity: 0;
+        div[data-testid="column"]:has(button[data-testid*="auto"]) {
+            display: none !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -729,24 +735,6 @@ elif st.session_state.game_state == 'playing':
                 st.session_state.rocks_remaining = int(rocks_str) if rocks_str else 0
             except:
                 st.session_state.rocks_remaining = 0
-            st.session_state.game_state = 'level_failed'
-            st.rerun()
-    
-    st.write("")
-    st.info("⏸️ Manual controls:")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("⏸️ PAUSE", use_container_width=True):
-            st.session_state.game_state = 'level_start'
-            st.rerun()
-    with col2:
-        if st.button("✅ FORCE COMPLETE", use_container_width=True):
-            st.session_state.score += 100
-            st.session_state.level += 1
-            st.session_state.game_state = 'level_complete'
-            st.rerun()
-    with col3:
-        if st.button("❌ FORCE FAIL", use_container_width=True):
             st.session_state.game_state = 'level_failed'
             st.rerun()
 
