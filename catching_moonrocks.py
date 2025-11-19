@@ -740,87 +740,48 @@ elif st.session_state.game_state == 'playing':
 
 # ==================== LEVEL COMPLETE SCREEN ====================
 elif st.session_state.game_state == 'level_complete':
-    bg_bytes = load_background(st.session_state.level - 1)
-    if bg_bytes:
-        st.markdown(f"""
-            <style>
-            .stApp {{
-                background-image: url(data:image/png;base64,{bg_bytes});
-                background-size: cover;
-                background-position: center;
-            }}
-            </style>
-        """, unsafe_allow_html=True)
+    # Full screen with logo and "Level Complete" title
+    logo_bytes = load_logo()
     
-    col1, col2 = st.columns([1, 1])
+    st.markdown("""
+        <style>
+        .stApp {
+            background: linear-gradient(135deg, #0a4d2e 0%, #1a5f3a 50%, #0a3d2e 100%);
+        }
+        </style>
+    """, unsafe_allow_html=True)
     
-    # Left: Success message
-    with col1:
-        st.markdown(f"""
-            <div style="background: rgba(10, 14, 39, 0.95); padding: 30px; border-radius: 12px; 
-                        text-align: center; backdrop-filter: blur(12px); border: 2px solid rgba(34, 197, 94, 0.5);">
-                <h1 style='color: #22c55e; font-size: 2.5rem; margin: 10px 0;'>★ Level {st.session_state.level - 1}<br>Complete!</h1>
-                <p style='color: #f8fafc; font-size: 1.5rem; margin: 15px 0;'><strong>Score: {st.session_state.score}</strong></p>
-                <p style='color: #cbd5e1; font-size: 1.1rem;'>Moonrocks Remaining: 0</p>
-                <p style='color: #22c55e; font-size: 1rem; margin-top: 20px;'>🎉 Mission Success!</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.write("")
-        if st.button("▶️ NEXT LEVEL", type="primary", use_container_width=True, key="next_level"):
-            st.session_state.game_state = 'level_start'
-            st.rerun()
-        
-        if st.button("🏠 MAIN MENU", use_container_width=True):
-            st.session_state.score = 0
-            st.session_state.level = 1
-            st.session_state.game_state = 'title'
-            st.rerun()
-    
-    # Right: Snapshot with download
+    # Centered content
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown("""
-            <div style="background: rgba(10, 14, 39, 0.95); padding: 20px; border-radius: 12px; 
-                        backdrop-filter: blur(12px); border: 2px solid rgba(34, 197, 94, 0.5);">
-                <h3 style='color: #22c55e; text-align: center; margin-bottom: 15px;'>📸 Mission Snapshot</h3>
+        if logo_bytes:
+            st.markdown(f"""
+                <div style="text-align: center; margin: 40px 0;">
+                    <img src="data:image/png;base64,{logo_bytes}" 
+                         style="max-width: 400px; width: 70%; animation: pulse 2s ease-in-out infinite;">
+                </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown(f"""
+            <div style="text-align: center; margin: 30px 0;">
+                <h1 style='color: #22c55e; font-size: 4rem; text-shadow: 0 0 20px rgba(34, 197, 94, 0.5); margin: 0;'>
+                    ★ Level {st.session_state.level - 1}<br>Complete!
+                </h1>
+                <p style='color: #f8fafc; font-size: 2rem; margin: 20px 0;'>
+                    <strong>Score: {st.session_state.score}</strong>
+                </p>
             </div>
         """, unsafe_allow_html=True)
-        
-        # Snapshot capture and download
-        snapshot_html = """
-            <div style="text-align: center; margin-top: 10px;">
-                <canvas id="snapshotCanvas" width="640" height="480" style="max-width: 100%; border-radius: 8px; border: 2px solid #22c55e;"></canvas>
-                <br><br>
-                <a id="downloadLink" download="lunar_loot_success.png" style="display: inline-block; padding: 12px 24px; background: #22c55e; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: Orbitron;">
-                    ⬇️ Download Spaceshot
-                </a>
-            </div>
-            <script>
-                const canvas = document.getElementById('snapshotCanvas');
-                const ctx = canvas.getContext('2d');
-                const snapshot = localStorage.getItem('lunar_loot_snapshot');
-                
-                if (snapshot) {
-                    const img = new Image();
-                    img.onload = () => {
-                        ctx.drawImage(img, 0, 0);
-                        document.getElementById('downloadLink').href = snapshot;
-                    };
-                    img.src = snapshot;
-                } else {
-                    ctx.fillStyle = '#1a1f3a';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = '#22c55e';
-                    ctx.font = '24px Orbitron';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('Snapshot Captured!', canvas.width/2, canvas.height/2);
-                }
-            </script>
-        """
-        components.html(snapshot_html, height=600)
+    
+    # Auto-advance to next level after 3 seconds
+    import time
+    time.sleep(3)
+    st.session_state.game_state = 'level_start'
+    st.rerun()
 
 # ==================== LEVEL FAILED SCREEN ====================
 elif st.session_state.game_state == 'level_failed':
+    # Dark background
     bg_bytes = load_background(st.session_state.level)
     if bg_bytes:
         st.markdown(f"""
@@ -829,6 +790,17 @@ elif st.session_state.game_state == 'level_failed':
                 background-image: url(data:image/png;base64,{bg_bytes});
                 background-size: cover;
                 background-position: center;
+                filter: brightness(0.4);
+            }}
+            .stApp::before {{
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(10, 14, 39, 0.7);
+                z-index: 0;
             }}
             </style>
         """, unsafe_allow_html=True)
@@ -839,20 +811,28 @@ elif st.session_state.game_state == 'level_failed':
     with col1:
         rocks_left = st.session_state.rocks_remaining
         st.markdown(f"""
-            <div style="background: rgba(10, 14, 39, 0.95); padding: 30px; border-radius: 12px; 
-                        text-align: center; backdrop-filter: blur(12px); border: 2px solid rgba(239, 68, 68, 0.5);">
-                <h1 style='color: #ef4444; font-size: 2.5rem; margin: 10px 0;'>⏱️ Time's Up!</h1>
-                <p style='color: #cbd5e1; font-size: 1.2rem; margin: 15px 0;'>Moonrocks Remaining: {rocks_left}</p>
-                <p style='color: #f8fafc; font-size: 1.3rem; margin: 15px 0;'><strong>Current Score: {st.session_state.score}</strong></p>
-                <p style='color: #cbd5e1; font-size: 1rem;'>Level: {st.session_state.level}</p>
-                <p style='color: #ef4444; font-size: 1rem; margin-top: 20px;'>You didn't collect all the moonrocks in time!</p>
+            <div style="background: rgba(10, 14, 39, 0.95); padding: 40px; border-radius: 12px; 
+                        backdrop-filter: blur(12px); border: 2px solid rgba(239, 68, 68, 0.5); position: relative; z-index: 1;">
+                <h1 style='color: #ef4444; font-size: 3rem; margin: 10px 0; text-shadow: 0 0 20px rgba(239, 68, 68, 0.5);'>
+                    Time's Up!
+                </h1>
+                <p style='color: #cbd5e1; font-size: 1.3rem; margin: 20px 0;'>
+                    Moonrocks Remaining: <span style='color: #ef4444; font-weight: bold;'>{rocks_left}</span>
+                </p>
+                <p style='color: #f8fafc; font-size: 1.5rem; margin: 20px 0;'>
+                    <strong>Current Score: {st.session_state.score}</strong>
+                </p>
+                <p style='color: #cbd5e1; font-size: 1.1rem;'>Level: {st.session_state.level}</p>
+                <p style='color: #ef4444; font-size: 1rem; margin-top: 30px; font-style: italic;'>
+                    You didn't collect all the moonrocks in time!
+                </p>
             </div>
         """, unsafe_allow_html=True)
         
         st.write("")
         col_a, col_b = st.columns(2)
         with col_a:
-            if st.button("🔄 RETRY LEVEL", type="primary", use_container_width=True):
+            if st.button("🔄 RETRY", type="primary", use_container_width=True):
                 st.session_state.game_state = 'level_start'
                 st.rerun()
         with col_b:
@@ -866,18 +846,18 @@ elif st.session_state.game_state == 'level_failed':
     with col2:
         st.markdown("""
             <div style="background: rgba(10, 14, 39, 0.95); padding: 20px; border-radius: 12px; 
-                        backdrop-filter: blur(12px); border: 2px solid rgba(239, 68, 68, 0.5);">
+                        backdrop-filter: blur(12px); border: 2px solid rgba(239, 68, 68, 0.5); position: relative; z-index: 1;">
                 <h3 style='color: #ef4444; text-align: center; margin-bottom: 15px;'>📸 Mission Snapshot</h3>
             </div>
         """, unsafe_allow_html=True)
         
         # Snapshot capture and download
         snapshot_html = """
-            <div style="text-align: center; margin-top: 10px;">
+            <div style="text-align: center; margin-top: 10px; position: relative; z-index: 1;">
                 <canvas id="snapshotCanvas" width="640" height="480" style="max-width: 100%; border-radius: 8px; border: 2px solid #ef4444;"></canvas>
                 <br><br>
                 <a id="downloadLink" download="lunar_loot_attempt.png" style="display: inline-block; padding: 12px 24px; background: #ef4444; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: Orbitron;">
-                    ⬇️ Download Spaceshot
+                    ⬇️ Download Snapshot
                 </a>
             </div>
             <script>
