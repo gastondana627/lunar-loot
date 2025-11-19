@@ -86,6 +86,57 @@ def load_moonrock_image():
             pass
     return None
 
+# Check for game result from localStorage FIRST (before any rendering)
+# This component runs immediately and checks if game ended
+if 'checking_result' not in st.session_state:
+    st.session_state.checking_result = False
+
+# Only check when in playing state
+if hasattr(st.session_state, 'game_state') and st.session_state.game_state == 'playing':
+    result_checker = """
+        <script>
+        const result = localStorage.getItem('lunar_loot_result');
+        const rocks = localStorage.getItem('lunar_loot_rocks');
+        
+        if (result) {
+            console.log('Auto-advance detected:', result);
+            localStorage.removeItem('lunar_loot_result');
+            localStorage.removeItem('lunar_loot_rocks');
+            
+            // Set query params to trigger state change
+            const url = new URL(window.location);
+            url.searchParams.set('game_result', result);
+            url.searchParams.set('rocks_left', rocks || '0');
+            window.parent.location.href = url.toString();
+        }
+        </script>
+    """
+    components.html(result_checker, height=0)
+
+# Check query params for game result
+if 'game_result' in st.query_params:
+    result = st.query_params.get('game_result')
+    rocks_left = st.query_params.get('rocks_left', '0')
+    
+    # Clear query params
+    st.query_params.clear()
+    
+    if result == 'complete':
+        st.session_state.score += 100
+        st.session_state.level += 1
+        if st.session_state.level > MAX_LEVELS:
+            st.session_state.game_state = 'game_complete'
+        else:
+            st.session_state.game_state = 'level_complete'
+        st.rerun()
+    elif result == 'failed':
+        try:
+            st.session_state.rocks_remaining = int(rocks_left)
+        except:
+            st.session_state.rocks_remaining = 0
+        st.session_state.game_state = 'level_failed'
+        st.rerun()
+
 # Session state
 if 'game_state' not in st.session_state:
     st.session_state.game_state = 'intro'  # Start with intro screen
@@ -858,88 +909,13 @@ elif st.session_state.game_state == 'playing':
     st.write("")
     st.success("🎮 Game will automatically advance when timer expires or all rocks are collected!")
     
-    # Pause button only
+    # Pause button - allows player to return to level start screen
     if st.button("⏸️ PAUSE GAME", use_container_width=True, key="pause_btn"):
         st.session_state.is_resuming = True  # Set flag for resume
         st.session_state.game_state = 'level_start'
         st.rerun()
     
-    # Check for auto-advance from localStorage via query params
-    # This runs on every render when in 'playing' state
-    result_check_html = """
-        <script>
-        // Check localStorage for game result
-        const result = localStorage.getItem('lunar_loot_result');
-        const rocksLeft = localStorage.getItem('lunar_loot_rocks');
-        
-        if (result) {
-            console.log('Game ended:', result, 'rocks:', rocksLeft);
-            
-            // Clear the flags
-            localStorage.removeItem('lunar_loot_result');
-            localStorage.removeItem('lunar_loot_rocks');
-            
-            // Trigger state change by setting session state directly
-            if (result === 'complete') {
-                // Find and click the hidden complete button
-                setTimeout(() => {
-                    const buttons = window.parent.document.querySelectorAll('button');
-                    buttons.forEach(btn => {
-                        if (btn.textContent.includes('AUTO_COMPLETE')) {
-                            console.log('Triggering complete');
-                            btn.click();
-                        }
-                    });
-                }, 100);
-            } else if (result === 'failed') {
-                // Find and click the hidden fail button
-                setTimeout(() => {
-                    const buttons = window.parent.document.querySelectorAll('button');
-                    buttons.forEach(btn => {
-                        if (btn.textContent.includes('AUTO_FAIL')) {
-                            console.log('Triggering fail');
-                            btn.click();
-                        }
-                    });
-                }, 100);
-            }
-        }
-        </script>
-    """
-    components.html(result_check_html, height=0)
-    
-    # Hidden trigger buttons - these will be clicked by JavaScript
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("AUTO_COMPLETE", key="auto_complete", use_container_width=False):
-            st.session_state.score += 100  # Bonus for completing
-            st.session_state.level += 1
-            
-            # Check if all levels complete
-            if st.session_state.level > MAX_LEVELS:
-                st.session_state.game_state = 'game_complete'
-            else:
-                st.session_state.game_state = 'level_complete'
-            st.rerun()
-    with col2:
-        if st.button("AUTO_FAIL", key="auto_fail", use_container_width=False):
-            # Get rocks remaining from localStorage if available
-            try:
-                rocks_str = st.query_params.get('rocks', '0')
-                st.session_state.rocks_remaining = int(rocks_str) if rocks_str else 0
-            except:
-                st.session_state.rocks_remaining = 0
-            st.session_state.game_state = 'level_failed'
-            st.rerun()
-    
-    # Hide the trigger buttons
-    st.markdown("""
-        <style>
-        button[key="auto_complete"], button[key="auto_fail"] {
-            display: none !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    # Note: Auto-advance is handled at app initialization via query params
 
 # ==================== LEVEL COMPLETE SCREEN ====================
 elif st.session_state.game_state == 'level_complete':
