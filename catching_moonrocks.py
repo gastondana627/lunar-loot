@@ -88,7 +88,7 @@ def load_moonrock_image():
 
 # Session state
 if 'game_state' not in st.session_state:
-    st.session_state.game_state = 'title'
+    st.session_state.game_state = 'intro'  # Start with intro screen
 if 'score' not in st.session_state:
     st.session_state.score = 0
 if 'level' not in st.session_state:
@@ -156,8 +156,124 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
+# ==================== INTRO SCREEN ====================
+if st.session_state.game_state == 'intro':
+    # Load main menu background
+    main_bg = load_main_menu_bg()
+    logo_bytes = load_logo()
+    
+    if main_bg:
+        st.markdown(f"""
+            <style>
+            .stApp {{
+                background-image: url(data:image/png;base64,{main_bg});
+                background-size: cover;
+                background-position: center;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
+    
+    # Centered content
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        # Logo
+        if logo_bytes:
+            st.markdown(f"""
+                <div style="text-align: center; margin: 60px 0 40px 0;">
+                    <img src="data:image/png;base64,{logo_bytes}" 
+                         style="max-width: 500px; width: 80%; animation: pulse 2s ease-in-out infinite;">
+                </div>
+            """, unsafe_allow_html=True)
+        
+        # Menu buttons
+        st.write("")
+        st.write("")
+        
+        if st.button("▶ BEGIN GAME", type="primary", use_container_width=True, key="begin_game"):
+            st.session_state.game_state = 'title'
+            st.rerun()
+        
+        st.write("")
+        
+        if st.button("ℹ️ ABOUT", use_container_width=True, key="about_btn"):
+            st.session_state.game_state = 'about'
+            st.rerun()
+        
+        # AI Credits at bottom
+        st.write("")
+        st.write("")
+        st.markdown("""
+            <div style="background: rgba(10, 14, 39, 0.85); padding: 20px; border-radius: 12px; 
+                        border: 1px solid rgba(99, 102, 241, 0.3); margin-top: 40px; text-align: center;">
+                <p style="color: #6366f1; font-size: 1rem; font-weight: 600; margin-bottom: 10px;">
+                    AI POWERED BY
+                </p>
+                <p style="color: #cbd5e1; font-size: 0.95rem; margin: 0;">
+                    Google MediaPipe · Freepik · ElevenLabs · Adobe
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+# ==================== ABOUT SCREEN ====================
+elif st.session_state.game_state == 'about':
+    main_bg = load_main_menu_bg()
+    if main_bg:
+        st.markdown(f"""
+            <style>
+            .stApp {{
+                background-image: url(data:image/png;base64,{main_bg});
+                background-size: cover;
+                background-position: center;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+            <div style="background: rgba(10, 14, 39, 0.9); padding: 40px; border-radius: 12px; 
+                        border: 2px solid rgba(99, 102, 241, 0.5);">
+                <h1 style='color: #6366f1; text-align: center; margin-bottom: 30px;'>About Lunar Loot</h1>
+                
+                <h3 style='color: #22c55e; margin-top: 25px;'>🎮 How to Play</h3>
+                <p style='color: #cbd5e1; line-height: 1.8;'>
+                    • Use your <strong>index finger</strong> to touch moonrocks<br>
+                    • Collect all rocks before time runs out<br>
+                    • Build combos by collecting quickly<br>
+                    • Progress through 14 space sectors
+                </p>
+                
+                <h3 style='color: #22c55e; margin-top: 25px;'>🤖 Computer Vision Technology</h3>
+                <p style='color: #cbd5e1; line-height: 1.8;'>
+                    • <strong>Google MediaPipe</strong> - Real-time hand tracking AI<br>
+                    • Runs entirely in your browser (JavaScript)<br>
+                    • No controllers needed - just your hands!<br>
+                    • Privacy-first: No recording, no data stored
+                </p>
+                
+                <h3 style='color: #22c55e; margin-top: 25px;'>🎨 AI Tools Used</h3>
+                <p style='color: #cbd5e1; line-height: 1.8;'>
+                    • <strong>Freepik</strong> - Space backgrounds & UI assets<br>
+                    • <strong>Adobe</strong> - Logo & visual design<br>
+                    • <strong>ElevenLabs</strong> - Voice & sound effects<br>
+                    • <strong>MediaPipe</strong> - Hand gesture recognition
+                </p>
+                
+                <h3 style='color: #22c55e; margin-top: 25px;'>🎁 Easter Eggs</h3>
+                <p style='color: #cbd5e1; line-height: 1.8;'>
+                    • ✌️ <strong>Peace Sign</strong> = +50 points<br>
+                    • 👍 <strong>Thumbs Up</strong> = +100 points
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.write("")
+        if st.button("◀ BACK TO MENU", use_container_width=True):
+            st.session_state.game_state = 'intro'
+            st.rerun()
+
 # ==================== TITLE SCREEN ====================
-if st.session_state.game_state == 'title':
+elif st.session_state.game_state == 'title':
     main_bg = load_main_menu_bg()
     if main_bg:
         st.markdown(f"""
