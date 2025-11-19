@@ -493,7 +493,7 @@ elif st.session_state.game_state == 'playing':
                         ctx.fillText(`COMBO x${{combo + 1}}!`, canvas.width - 190, 180);
                     }}
                     
-                    // Check win/lose conditions
+                    // Check win/lose conditions - AUTO ADVANCE
                     if (rocksLeft === 0 && !levelComplete) {{
                         levelComplete = true;
                         
@@ -521,9 +521,9 @@ elif st.session_state.game_state == 'playing':
                         ctx.fillStyle = '#FFFFFF';
                         ctx.fillText(`Score: ${{score}}`, canvas.width/2 - 80, canvas.height/2 + 50);
                         
-                        // Redirect to trigger level complete
+                        // AUTO ADVANCE after 2 seconds
                         setTimeout(() => {{
-                            window.top.location.href = window.top.location.pathname + '?game_result=complete&score=' + score;
+                            window.parent.postMessage({{type: 'game_complete', score: score}}, '*');
                         }}, 2000);
                     }} else if (remaining <= 0 && !gameOver && !levelComplete) {{
                         gameOver = true;
@@ -553,8 +553,9 @@ elif st.session_state.game_state == 'playing':
                         ctx.fillText(`Final Score: ${{score}}`, canvas.width/2 - 120, canvas.height/2 + 50);
                         ctx.fillText(`Rocks Remaining: ${{rocksLeft}}`, canvas.width/2 - 150, canvas.height/2 + 90);
                         
+                        // AUTO ADVANCE after 2 seconds
                         setTimeout(() => {{
-                            window.top.location.href = window.top.location.pathname + '?game_result=failed&score=' + score;
+                            window.parent.postMessage({{type: 'game_failed', score: score}}, '*');
                         }}, 2000);
                     }}
                 }});
@@ -577,28 +578,47 @@ elif st.session_state.game_state == 'playing':
     # Full width game (score is now inside the canvas on the right)
     components.html(game_html, height=600, scrolling=False)
     
+    # Add JavaScript listener for auto-advance
+    st.markdown("""
+        <script>
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'game_complete') {
+                // Trigger level complete
+                window.location.href = window.location.origin + window.location.pathname + '?auto_advance=complete&score=' + event.data.score;
+            } else if (event.data.type === 'game_failed') {
+                // Trigger level failed
+                window.location.href = window.location.origin + window.location.pathname + '?auto_advance=failed&score=' + event.data.score;
+            }
+        });
+        </script>
+    """, unsafe_allow_html=True)
+    
+    st.write("")
+    st.info("🎮 Game will automatically advance when timer expires or all rocks are collected!")
+    
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("⏸️ PAUSE GAME", use_container_width=True):
+        if st.button("⏸️ PAUSE", use_container_width=True):
             st.session_state.game_state = 'level_start'
             st.rerun()
     with col2:
-        if st.button("✅ NEXT LEVEL", type="primary", use_container_width=True):
+        if st.button("✅ MANUAL COMPLETE", use_container_width=True):
+            st.session_state.score += 100  # Bonus for completing
             st.session_state.level += 1
-            st.session_state.game_state = 'level_start'
+            st.session_state.game_state = 'level_complete'
             st.rerun()
     with col3:
-        if st.button("❌ RETRY", use_container_width=True):
-            st.session_state.game_state = 'level_start'
+        if st.button("❌ MANUAL FAIL", use_container_width=True):
+            st.session_state.game_state = 'level_failed'
             st.rerun()
     
-    # Check query parameters for game state updates
+    # Check query parameters for auto-advance
     try:
-        import streamlit as st
         query_params = st.query_params
-        if 'game_result' in query_params:
-            result = query_params['game_result']
+        if 'auto_advance' in query_params:
+            result = query_params['auto_advance']
             if result == 'complete':
+                st.session_state.score += 100  # Bonus for completing
                 st.session_state.level += 1
                 st.session_state.game_state = 'level_complete'
                 st.query_params.clear()
