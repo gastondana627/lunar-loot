@@ -407,14 +407,27 @@ elif st.session_state.game_state == 'playing':
                         const ringCurled = ringTip.y > ringMcp.y;
                         const pinkyCurled = pinkyTip.y > pinkyMcp.y;
                         
+                        // Peace sign gesture
                         if (indexExtended && middleExtended && ringCurled && pinkyCurled && 
                             currentTime - peaceLastTrigger > 5.0) {{
                             score += 50;
                             peaceLastTrigger = currentTime;
-                            // Show bonus text
                             ctx.fillStyle = '#22C55E';
                             ctx.font = 'bold 36px Orbitron';
                             ctx.fillText('✌️ PEACE! +50', canvas.width/2 - 120, canvas.height/2);
+                        }}
+                        
+                        // Thumbs up gesture
+                        const thumb = landmarks[4];
+                        const thumbExtended = thumb.y < landmarks[2].y;
+                        const allFingersCurled = !indexExtended && !middleExtended && ringCurled && pinkyCurled;
+                        
+                        if (thumbExtended && allFingersCurled && currentTime - thumbsLastTrigger > 5.0) {{
+                            score += 100;
+                            thumbsLastTrigger = currentTime;
+                            ctx.fillStyle = '#FFD700';
+                            ctx.font = 'bold 36px Orbitron';
+                            ctx.fillText('👍 THUMBS UP! +100', canvas.width/2 - 150, canvas.height/2);
                         }}
                     }}
                     
@@ -423,14 +436,16 @@ elif st.session_state.game_state == 'playing':
                     const remaining = Math.max(0, LEVEL_TIME - elapsed);
                     const rocksLeft = moonrocks.filter(r => !r.collected).length;
                     
-                    // Send state to parent for UI display
-                    window.parent.postMessage({{
+                    // Send state to parent for UI display (send to both parent and top)
+                    const gameState = {{
                         type: 'gameState',
                         score: score,
                         time: Math.floor(remaining),
                         rocks: rocksLeft,
                         combo: combo
-                    }}, '*');
+                    }};
+                    window.parent.postMessage(gameState, '*');
+                    window.top.postMessage(gameState, '*');
                     
                     // Check win/lose conditions
                     if (rocksLeft === 0 && !levelComplete) {{
@@ -517,16 +532,28 @@ elif st.session_state.game_state == 'playing':
         components.html(game_html, height=600)
     
     with col2:
-        # Score Panel (like in your screenshots)
-        st.markdown(f"""
+        # Score Panel with LIVE updates
+        score_placeholder = st.empty()
+        score_placeholder.markdown(f"""
             <div style="background: rgba(10, 14, 39, 0.9); padding: 20px; border-radius: 12px; 
                         border: 2px solid rgba(99, 102, 241, 0.5); margin-top: 20px;">
                 <h2 style="color: #6366f1; margin: 0 0 20px 0;">{st.session_state.spacetag or 'Player'}</h2>
-                <p style="font-size: 1.5rem; margin: 10px 0;"><strong>Score:</strong> <span style="color: #22C55E;">{st.session_state.score}</span></p>
+                <p style="font-size: 1.5rem; margin: 10px 0;"><strong>Score:</strong> <span style="color: #22C55E;" id="scoreDisplay">{st.session_state.score}</span></p>
                 <p style="font-size: 1.5rem; margin: 10px 0;"><strong>Level:</strong> {st.session_state.level}</p>
                 <p style="font-size: 1.5rem; margin: 10px 0; color: #EF4444;"><strong>Time:</strong> <span id="timeDisplay">30s</span></p>
                 <p style="font-size: 1.5rem; margin: 10px 0;"><strong>Rocks:</strong> <span id="rocksDisplay">{num_rocks}</span></p>
             </div>
+            
+            <script>
+            // Listen for game state updates from iframe
+            window.addEventListener('message', function(event) {{
+                if (event.data.type === 'gameState') {{
+                    document.getElementById('scoreDisplay').textContent = event.data.score;
+                    document.getElementById('timeDisplay').textContent = event.data.time + 's';
+                    document.getElementById('rocksDisplay').textContent = event.data.rocks;
+                }}
+            }});
+            </script>
         """, unsafe_allow_html=True)
         
         st.write("")
