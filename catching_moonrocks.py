@@ -83,6 +83,10 @@ if 'level' not in st.session_state:
     st.session_state.level = 1
 if 'spacetag' not in st.session_state:
     st.session_state.spacetag = ''
+if 'snapshot' not in st.session_state:
+    st.session_state.snapshot = None
+if 'rocks_remaining' not in st.session_state:
+    st.session_state.rocks_remaining = 0
 
 # Custom CSS
 st.markdown("""
@@ -544,7 +548,7 @@ elif st.session_state.game_state == 'playing':
                             const snapCtx = snapshotCanvas.getContext('2d');
                             snapCtx.drawImage(canvas, 0, 0);
                             const snapshotData = snapshotCanvas.toDataURL('image/png');
-                            window.parent.postMessage({{type: 'snapshot', data: snapshotData}}, '*');
+                            localStorage.setItem('lunar_loot_snapshot', snapshotData);
                             snapshotTaken = true;
                         }}
                         
@@ -571,11 +575,9 @@ elif st.session_state.game_state == 'playing':
                         if (!autoAdvanceTriggered) {{
                             autoAdvanceTriggered = true;
                             setTimeout(() => {{
-                                // Store result in localStorage
-                                localStorage.setItem('game_result', 'complete');
-                                localStorage.setItem('game_score', score);
-                                // Force page reload to trigger Streamlit state change
-                                window.location.reload();
+                                // Store result in localStorage for polling script
+                                localStorage.setItem('lunar_loot_result', 'complete');
+                                localStorage.setItem('lunar_loot_rocks', '0');
                             }}, 2000);
                         }}
                     }} else if (remaining <= 0 && !gameOver && !levelComplete) {{
@@ -589,7 +591,7 @@ elif st.session_state.game_state == 'playing':
                             const snapCtx = snapshotCanvas.getContext('2d');
                             snapCtx.drawImage(canvas, 0, 0);
                             const snapshotData = snapshotCanvas.toDataURL('image/png');
-                            window.parent.postMessage({{type: 'snapshot', data: snapshotData}}, '*');
+                            localStorage.setItem('lunar_loot_snapshot', snapshotData);
                             snapshotTaken = true;
                         }}
                         
@@ -617,11 +619,9 @@ elif st.session_state.game_state == 'playing':
                         if (!autoAdvanceTriggered) {{
                             autoAdvanceTriggered = true;
                             setTimeout(() => {{
-                                // Store result in localStorage
-                                localStorage.setItem('game_result', 'failed');
-                                localStorage.setItem('game_score', score);
-                                // Force page reload to trigger Streamlit state change
-                                window.location.reload();
+                                // Store result in localStorage for polling script
+                                localStorage.setItem('lunar_loot_result', 'failed');
+                                localStorage.setItem('lunar_loot_rocks', rocksLeft.toString());
                             }}, 2000);
                         }}
                     }}
@@ -642,50 +642,73 @@ elif st.session_state.game_state == 'playing':
         </html>
     """
     
-    # Check localStorage for game result BEFORE rendering
-    check_result_html = """
-        <script>
-        const result = localStorage.getItem('game_result');
-        if (result) {
-            localStorage.removeItem('game_result');
-            localStorage.removeItem('game_score');
-            // Trigger button click based on result
-            setTimeout(() => {
-                const buttons = window.parent.document.querySelectorAll('button');
-                buttons.forEach(btn => {
-                    if (result === 'complete' && btn.textContent.includes('AUTO_COMPLETE_TRIGGER')) {
-                        btn.click();
-                    } else if (result === 'failed' && btn.textContent.includes('AUTO_FAIL_TRIGGER')) {
-                        btn.click();
-                    }
-                });
-            }, 100);
-        }
-        </script>
-    """
-    components.html(check_result_html, height=0)
-    
     # Full width game (score is now inside the canvas on the right)
     components.html(game_html, height=600, scrolling=False)
     
     st.write("")
     st.success("🎮 Game will automatically advance when timer expires or all rocks are collected!")
     
-    # Hidden trigger buttons for auto-advance
+    # Auto-advance polling mechanism
+    auto_advance_html = """
+        <script>
+        // Poll for game completion every 500ms
+        setInterval(() => {
+            const iframe = window.parent.document.querySelector('iframe[title="streamlit_component"]');
+            if (iframe && iframe.contentWindow) {
+                try {
+                    const result = localStorage.getItem('lunar_loot_result');
+                    const snapshot = localStorage.getItem('lunar_loot_snapshot');
+                    const rocksLeft = localStorage.getItem('lunar_loot_rocks');
+                    
+                    if (result) {
+                        // Clear localStorage
+                        localStorage.removeItem('lunar_loot_result');
+                        const snapshotData = localStorage.getItem('lunar_loot_snapshot');
+                        const rocksData = localStorage.getItem('lunar_loot_rocks');
+                        localStorage.removeItem('lunar_loot_snapshot');
+                        localStorage.removeItem('lunar_loot_rocks');
+                        
+                        // Find and click the appropriate button
+                        const buttons = window.parent.document.querySelectorAll('button');
+                        buttons.forEach(btn => {
+                            const text = btn.textContent || btn.innerText;
+                            if (result === 'complete' && text.includes('🎯')) {
+                                btn.click();
+                            } else if (result === 'failed' && text.includes('⏱️')) {
+                                btn.click();
+                            }
+                        });
+                    }
+                } catch(e) {
+                    console.log('Polling error:', e);
+                }
+            }
+        }, 500);
+        </script>
+    """
+    components.html(auto_advance_html, height=0)
+    
+    # Hidden trigger buttons
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🎯 AUTO_COMPLETE_TRIGGER", key="auto_complete", use_container_width=True):
+        if st.button("🎯", key="auto_complete", use_container_width=False):
             st.session_state.score += 100  # Bonus for completing
             st.session_state.level += 1
             st.session_state.game_state = 'level_complete'
             st.rerun()
     with col2:
-        if st.button("⏱️ AUTO_FAIL_TRIGGER", key="auto_fail", use_container_width=True):
+        if st.button("⏱️", key="auto_fail", use_container_width=False):
+            # Get rocks remaining from localStorage if available
+            try:
+                rocks_str = st.query_params.get('rocks', '0')
+                st.session_state.rocks_remaining = int(rocks_str) if rocks_str else 0
+            except:
+                st.session_state.rocks_remaining = 0
             st.session_state.game_state = 'level_failed'
             st.rerun()
     
     st.write("")
-    st.info("⏸️ Manual controls (for testing):")
+    st.info("⏸️ Manual controls:")
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("⏸️ PAUSE", use_container_width=True):
@@ -716,32 +739,72 @@ elif st.session_state.game_state == 'level_complete':
             </style>
         """, unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-            <div style="background: rgba(10, 14, 39, 0.9); padding: 40px; border-radius: 12px; 
+    col1, col2 = st.columns([1, 1])
+    
+    # Left: Success message
+    with col1:
+        st.markdown(f"""
+            <div style="background: rgba(10, 14, 39, 0.95); padding: 30px; border-radius: 12px; 
                         text-align: center; backdrop-filter: blur(12px); border: 2px solid rgba(34, 197, 94, 0.5);">
+                <h1 style='color: #22c55e; font-size: 2.5rem; margin: 10px 0;'>★ Level {st.session_state.level - 1}<br>Complete!</h1>
+                <p style='color: #f8fafc; font-size: 1.5rem; margin: 15px 0;'><strong>Score: {st.session_state.score}</strong></p>
+                <p style='color: #cbd5e1; font-size: 1.1rem;'>Moonrocks Remaining: 0</p>
+                <p style='color: #22c55e; font-size: 1rem; margin-top: 20px;'>🎉 Mission Success!</p>
+            </div>
         """, unsafe_allow_html=True)
         
-        logo_bytes = load_logo()
-        if logo_bytes:
-            st.markdown(f"""
-                <img src="data:image/png;base64,{logo_bytes}" 
-                     style="max-width: 400px; width: 70%; animation: pulse 2s ease-in-out infinite;">
-            """, unsafe_allow_html=True)
+        st.write("")
+        if st.button("▶️ NEXT LEVEL", type="primary", use_container_width=True, key="next_level"):
+            st.session_state.game_state = 'level_start'
+            st.rerun()
         
-        st.markdown(f"<h1 style='color: #22c55e; margin: 20px 0;'>★ Level {st.session_state.level - 1} Complete!</h1>", 
-                    unsafe_allow_html=True)
-        st.markdown(f"<p style='color: #f8fafc; font-size: 20px;'><strong>Score:</strong> {st.session_state.score}</p>", 
-                    unsafe_allow_html=True)
-        
-        st.success("▶ Preparing next sector...")
-        st.markdown("</div>", unsafe_allow_html=True)
+        if st.button("🏠 MAIN MENU", use_container_width=True):
+            st.session_state.score = 0
+            st.session_state.level = 1
+            st.session_state.game_state = 'title'
+            st.rerun()
     
-    import time
-    time.sleep(2)
-    st.session_state.game_state = 'level_start'
-    st.rerun()
+    # Right: Snapshot with download
+    with col2:
+        st.markdown("""
+            <div style="background: rgba(10, 14, 39, 0.95); padding: 20px; border-radius: 12px; 
+                        backdrop-filter: blur(12px); border: 2px solid rgba(34, 197, 94, 0.5);">
+                <h3 style='color: #22c55e; text-align: center; margin-bottom: 15px;'>📸 Mission Snapshot</h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Snapshot capture and download
+        snapshot_html = """
+            <div style="text-align: center; margin-top: 10px;">
+                <canvas id="snapshotCanvas" width="640" height="480" style="max-width: 100%; border-radius: 8px; border: 2px solid #22c55e;"></canvas>
+                <br><br>
+                <a id="downloadLink" download="lunar_loot_success.png" style="display: inline-block; padding: 12px 24px; background: #22c55e; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: Orbitron;">
+                    ⬇️ Download Spaceshot
+                </a>
+            </div>
+            <script>
+                const canvas = document.getElementById('snapshotCanvas');
+                const ctx = canvas.getContext('2d');
+                const snapshot = localStorage.getItem('lunar_loot_snapshot');
+                
+                if (snapshot) {
+                    const img = new Image();
+                    img.onload = () => {
+                        ctx.drawImage(img, 0, 0);
+                        document.getElementById('downloadLink').href = snapshot;
+                    };
+                    img.src = snapshot;
+                } else {
+                    ctx.fillStyle = '#1a1f3a';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#22c55e';
+                    ctx.font = '24px Orbitron';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Snapshot Captured!', canvas.width/2, canvas.height/2);
+                }
+            </script>
+        """
+        components.html(snapshot_html, height=600)
 
 # ==================== LEVEL FAILED SCREEN ====================
 elif st.session_state.game_state == 'level_failed':
@@ -757,14 +820,19 @@ elif st.session_state.game_state == 'level_failed':
             </style>
         """, unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
+    col1, col2 = st.columns([1, 1])
+    
+    # Left: Failure message
+    with col1:
+        rocks_left = st.session_state.rocks_remaining
         st.markdown(f"""
-            <div style="background: rgba(10, 14, 39, 0.9); padding: 40px; border-radius: 20px; 
-                        text-align: center; backdrop-filter: blur(10px); border: 2px solid rgba(239, 68, 68, 0.5);">
-                <h1 style="font-size: 3rem; color: #ef4444;">TIME'S UP!</h1>
-                <h2 style="color: #cbd5e1;">Final Score: {st.session_state.score}</h2>
-                <h3 style="color: #cbd5e1;">Levels Completed: {st.session_state.level - 1}</h3>
+            <div style="background: rgba(10, 14, 39, 0.95); padding: 30px; border-radius: 12px; 
+                        text-align: center; backdrop-filter: blur(12px); border: 2px solid rgba(239, 68, 68, 0.5);">
+                <h1 style='color: #ef4444; font-size: 2.5rem; margin: 10px 0;'>⏱️ Time's Up!</h1>
+                <p style='color: #cbd5e1; font-size: 1.2rem; margin: 15px 0;'>Moonrocks Remaining: {rocks_left}</p>
+                <p style='color: #f8fafc; font-size: 1.3rem; margin: 15px 0;'><strong>Current Score: {st.session_state.score}</strong></p>
+                <p style='color: #cbd5e1; font-size: 1rem;'>Level: {st.session_state.level}</p>
+                <p style='color: #ef4444; font-size: 1rem; margin-top: 20px;'>You didn't collect all the moonrocks in time!</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -775,8 +843,50 @@ elif st.session_state.game_state == 'level_failed':
                 st.session_state.game_state = 'level_start'
                 st.rerun()
         with col_b:
-            if st.button("🏠 MAIN MENU", use_container_width=True):
+            if st.button("🏠 END MISSION", use_container_width=True):
                 st.session_state.score = 0
                 st.session_state.level = 1
                 st.session_state.game_state = 'title'
                 st.rerun()
+    
+    # Right: Snapshot with download
+    with col2:
+        st.markdown("""
+            <div style="background: rgba(10, 14, 39, 0.95); padding: 20px; border-radius: 12px; 
+                        backdrop-filter: blur(12px); border: 2px solid rgba(239, 68, 68, 0.5);">
+                <h3 style='color: #ef4444; text-align: center; margin-bottom: 15px;'>📸 Mission Snapshot</h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Snapshot capture and download
+        snapshot_html = """
+            <div style="text-align: center; margin-top: 10px;">
+                <canvas id="snapshotCanvas" width="640" height="480" style="max-width: 100%; border-radius: 8px; border: 2px solid #ef4444;"></canvas>
+                <br><br>
+                <a id="downloadLink" download="lunar_loot_attempt.png" style="display: inline-block; padding: 12px 24px; background: #ef4444; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: Orbitron;">
+                    ⬇️ Download Spaceshot
+                </a>
+            </div>
+            <script>
+                const canvas = document.getElementById('snapshotCanvas');
+                const ctx = canvas.getContext('2d');
+                const snapshot = localStorage.getItem('lunar_loot_snapshot');
+                
+                if (snapshot) {
+                    const img = new Image();
+                    img.onload = () => {
+                        ctx.drawImage(img, 0, 0);
+                        document.getElementById('downloadLink').href = snapshot;
+                    };
+                    img.src = snapshot;
+                } else {
+                    ctx.fillStyle = '#1a1f3a';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#ef4444';
+                    ctx.font = '24px Orbitron';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Snapshot Captured!', canvas.width/2, canvas.height/2);
+                }
+            </script>
+        """
+        components.html(snapshot_html, height=600)
