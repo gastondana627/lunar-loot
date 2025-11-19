@@ -297,9 +297,12 @@ elif st.session_state.game_state == 'playing':
                 let lastCollectTime = 0;
                 let peaceLastTrigger = 0;
                 let thumbsLastTrigger = 0;
+                let peaceDisplayUntil = 0;
+                let thumbsDisplayUntil = 0;
                 let gameOver = false;
                 let levelComplete = false;
                 let snapshotTaken = false;
+                let autoAdvanceTriggered = false;
                 
                 // Load background image
                 const bgImage = new Image();
@@ -437,9 +440,7 @@ elif st.session_state.game_state == 'playing':
                             currentTime - peaceLastTrigger > 5.0) {{
                             score += 50;
                             peaceLastTrigger = currentTime;
-                            ctx.fillStyle = '#22C55E';
-                            ctx.font = 'bold 36px Orbitron';
-                            ctx.fillText('✌️ PEACE! +50', canvas.width/2 - 120, canvas.height/2);
+                            peaceDisplayUntil = currentTime + 2.0; // Display for 2 seconds
                         }}
                         
                         // Thumbs up gesture
@@ -450,9 +451,7 @@ elif st.session_state.game_state == 'playing':
                         if (thumbExtended && allFingersCurled && currentTime - thumbsLastTrigger > 5.0) {{
                             score += 100;
                             thumbsLastTrigger = currentTime;
-                            ctx.fillStyle = '#FFD700';
-                            ctx.font = 'bold 36px Orbitron';
-                            ctx.fillText('👍 THUMBS UP! +100', canvas.width/2 - 150, canvas.height/2);
+                            thumbsDisplayUntil = currentTime + 2.0; // Display for 2 seconds
                         }}
                     }}
                     
@@ -493,6 +492,25 @@ elif st.session_state.game_state == 'playing':
                         ctx.fillText(`COMBO x${{combo + 1}}!`, canvas.width - 190, 180);
                     }}
                     
+                    // Display gesture bonuses (persistent for 2 seconds)
+                    if (currentTime < peaceDisplayUntil) {{
+                        ctx.fillStyle = '#22C55E';
+                        ctx.font = 'bold 48px Orbitron';
+                        ctx.shadowBlur = 20;
+                        ctx.shadowColor = '#22C55E';
+                        ctx.fillText('✌️ PEACE! +50', canvas.width/2 - 150, canvas.height/2 - 50);
+                        ctx.shadowBlur = 0;
+                    }}
+                    
+                    if (currentTime < thumbsDisplayUntil) {{
+                        ctx.fillStyle = '#FFD700';
+                        ctx.font = 'bold 48px Orbitron';
+                        ctx.shadowBlur = 20;
+                        ctx.shadowColor = '#FFD700';
+                        ctx.fillText('👍 THUMBS UP! +100', canvas.width/2 - 180, canvas.height/2 - 50);
+                        ctx.shadowBlur = 0;
+                    }}
+                    
                     // Check win/lose conditions - AUTO ADVANCE
                     if (rocksLeft === 0 && !levelComplete) {{
                         levelComplete = true;
@@ -521,10 +539,21 @@ elif st.session_state.game_state == 'playing':
                         ctx.fillStyle = '#FFFFFF';
                         ctx.fillText(`Score: ${{score}}`, canvas.width/2 - 80, canvas.height/2 + 50);
                         
+                        // Stop camera
+                        camera.stop();
+                        video.srcObject.getTracks().forEach(track => track.stop());
+                        
                         // AUTO ADVANCE after 2 seconds
-                        setTimeout(() => {{
-                            window.parent.postMessage({{type: 'game_complete', score: score}}, '*');
-                        }}, 2000);
+                        if (!autoAdvanceTriggered) {{
+                            autoAdvanceTriggered = true;
+                            setTimeout(() => {{
+                                // Store result in localStorage
+                                localStorage.setItem('game_result', 'complete');
+                                localStorage.setItem('game_score', score);
+                                // Force page reload to trigger Streamlit state change
+                                window.location.reload();
+                            }}, 2000);
+                        }}
                     }} else if (remaining <= 0 && !gameOver && !levelComplete) {{
                         gameOver = true;
                         
@@ -553,10 +582,21 @@ elif st.session_state.game_state == 'playing':
                         ctx.fillText(`Final Score: ${{score}}`, canvas.width/2 - 120, canvas.height/2 + 50);
                         ctx.fillText(`Rocks Remaining: ${{rocksLeft}}`, canvas.width/2 - 150, canvas.height/2 + 90);
                         
+                        // Stop camera
+                        camera.stop();
+                        video.srcObject.getTracks().forEach(track => track.stop());
+                        
                         // AUTO ADVANCE after 2 seconds
-                        setTimeout(() => {{
-                            window.parent.postMessage({{type: 'game_failed', score: score}}, '*');
-                        }}, 2000);
+                        if (!autoAdvanceTriggered) {{
+                            autoAdvanceTriggered = true;
+                            setTimeout(() => {{
+                                // Store result in localStorage
+                                localStorage.setItem('game_result', 'failed');
+                                localStorage.setItem('game_score', score);
+                                // Force page reload to trigger Streamlit state change
+                                window.location.reload();
+                            }}, 2000);
+                        }}
                     }}
                 }});
                 
@@ -575,60 +615,65 @@ elif st.session_state.game_state == 'playing':
         </html>
     """
     
+    # Check localStorage for game result BEFORE rendering
+    check_result_html = """
+        <script>
+        const result = localStorage.getItem('game_result');
+        if (result) {
+            localStorage.removeItem('game_result');
+            localStorage.removeItem('game_score');
+            // Trigger button click based on result
+            setTimeout(() => {
+                const buttons = window.parent.document.querySelectorAll('button');
+                buttons.forEach(btn => {
+                    if (result === 'complete' && btn.textContent.includes('AUTO_COMPLETE_TRIGGER')) {
+                        btn.click();
+                    } else if (result === 'failed' && btn.textContent.includes('AUTO_FAIL_TRIGGER')) {
+                        btn.click();
+                    }
+                });
+            }, 100);
+        }
+        </script>
+    """
+    components.html(check_result_html, height=0)
+    
     # Full width game (score is now inside the canvas on the right)
     components.html(game_html, height=600, scrolling=False)
     
-    # Add JavaScript listener for auto-advance
-    st.markdown("""
-        <script>
-        window.addEventListener('message', function(event) {
-            if (event.data.type === 'game_complete') {
-                // Trigger level complete
-                window.location.href = window.location.origin + window.location.pathname + '?auto_advance=complete&score=' + event.data.score;
-            } else if (event.data.type === 'game_failed') {
-                // Trigger level failed
-                window.location.href = window.location.origin + window.location.pathname + '?auto_advance=failed&score=' + event.data.score;
-            }
-        });
-        </script>
-    """, unsafe_allow_html=True)
+    st.write("")
+    st.success("🎮 Game will automatically advance when timer expires or all rocks are collected!")
+    
+    # Hidden trigger buttons for auto-advance
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🎯 AUTO_COMPLETE_TRIGGER", key="auto_complete", use_container_width=True):
+            st.session_state.score += 100  # Bonus for completing
+            st.session_state.level += 1
+            st.session_state.game_state = 'level_complete'
+            st.rerun()
+    with col2:
+        if st.button("⏱️ AUTO_FAIL_TRIGGER", key="auto_fail", use_container_width=True):
+            st.session_state.game_state = 'level_failed'
+            st.rerun()
     
     st.write("")
-    st.info("🎮 Game will automatically advance when timer expires or all rocks are collected!")
-    
+    st.info("⏸️ Manual controls (for testing):")
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("⏸️ PAUSE", use_container_width=True):
             st.session_state.game_state = 'level_start'
             st.rerun()
     with col2:
-        if st.button("✅ MANUAL COMPLETE", use_container_width=True):
-            st.session_state.score += 100  # Bonus for completing
+        if st.button("✅ FORCE COMPLETE", use_container_width=True):
+            st.session_state.score += 100
             st.session_state.level += 1
             st.session_state.game_state = 'level_complete'
             st.rerun()
     with col3:
-        if st.button("❌ MANUAL FAIL", use_container_width=True):
+        if st.button("❌ FORCE FAIL", use_container_width=True):
             st.session_state.game_state = 'level_failed'
             st.rerun()
-    
-    # Check query parameters for auto-advance
-    try:
-        query_params = st.query_params
-        if 'auto_advance' in query_params:
-            result = query_params['auto_advance']
-            if result == 'complete':
-                st.session_state.score += 100  # Bonus for completing
-                st.session_state.level += 1
-                st.session_state.game_state = 'level_complete'
-                st.query_params.clear()
-                st.rerun()
-            elif result == 'failed':
-                st.session_state.game_state = 'level_failed'
-                st.query_params.clear()
-                st.rerun()
-    except:
-        pass
 
 # ==================== LEVEL COMPLETE SCREEN ====================
 elif st.session_state.game_state == 'level_complete':
