@@ -804,13 +804,22 @@ elif st.session_state.game_state == 'playing':
 
 # ==================== LEVEL COMPLETE SCREEN ====================
 elif st.session_state.game_state == 'level_complete':
-    # Full screen with logo and "Level Complete" title
+    # Full screen with logo and "Level Complete" title - CLEAN
     logo_bytes = load_logo()
     
+    # Hide all previous content and show only this screen
     st.markdown("""
         <style>
         .stApp {
-            background: linear-gradient(135deg, #0a4d2e 0%, #1a5f3a 50%, #0a3d2e 100%);
+            background: linear-gradient(135deg, #0a4d2e 0%, #1a5f3a 50%, #0a3d2e 100%) !important;
+        }
+        /* Hide any iframes or components from previous state */
+        iframe, .stMarkdown iframe {
+            display: none !important;
+        }
+        /* Ensure clean screen */
+        .stApp > div:first-child {
+            overflow: hidden !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -952,10 +961,19 @@ elif st.session_state.game_state == 'level_failed':
 elif st.session_state.game_state == 'game_complete':
     logo_bytes = load_logo()
     
+    # Clean screen - hide all previous content
     st.markdown("""
         <style>
         .stApp {
-            background: linear-gradient(135deg, #0a4d2e 0%, #1a5f3a 50%, #0a3d2e 100%);
+            background: linear-gradient(135deg, #0a4d2e 0%, #1a5f3a 50%, #0a3d2e 100%) !important;
+        }
+        /* Hide any iframes or components from previous state */
+        iframe, .stMarkdown iframe {
+            display: none !important;
+        }
+        /* Ensure clean screen */
+        .stApp > div:first-child {
+            overflow: hidden !important;
         }
         </style>
     """, unsafe_allow_html=True)
