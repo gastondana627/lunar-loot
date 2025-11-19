@@ -322,11 +322,20 @@ elif st.session_state.game_state == 'playing':
                 const moonrockImage = new Image();
                 moonrockImage.src = '{moonrock_data_url}';
                 
-                // Load audio files
+                // Load audio files with user interaction unlock
                 const collectSound = new Audio('https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/collect.wav');
                 const completeSound = new Audio('https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/level_complete.wav');
                 const failSound = new Audio('https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/level_failed.wav');
                 const beepSound = new Audio('https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/Beep.wav');
+                
+                // Unlock audio on first user interaction
+                let audioUnlocked = false;
+                document.addEventListener('click', () => {{
+                    if (!audioUnlocked) {{
+                        collectSound.play().then(() => collectSound.pause()).catch(() => {{}});
+                        audioUnlocked = true;
+                    }}
+                }}, {{ once: true }});
                 
                 // Initialize moonrocks
                 for (let i = 0; i < NUM_ROCKS; i++) {{
@@ -660,7 +669,7 @@ elif st.session_state.game_state == 'playing':
         st.session_state.game_state = 'level_start'
         st.rerun()
     
-    # Auto-advance polling mechanism
+    # Auto-advance polling mechanism - searches parent window
     auto_advance_html = """
         <script>
         let pollCount = 0;
@@ -680,27 +689,51 @@ elif st.session_state.game_state == 'playing':
                     localStorage.removeItem('lunar_loot_result');
                     localStorage.removeItem('lunar_loot_rocks');
                     
-                    // Find and click the appropriate button in parent document
-                    const buttons = document.querySelectorAll('button');
+                    // Search in parent window for Streamlit buttons
                     let clicked = false;
+                    const searchButtons = (doc) => {
+                        const buttons = doc.querySelectorAll('button');
+                        buttons.forEach(btn => {
+                            const text = btn.textContent || btn.innerText || '';
+                            console.log('Checking button:', text);
+                            if (result === 'complete' && (text.includes('🎯') || text.includes('AUTO_COMPLETE')) && !clicked) {
+                                console.log('Clicking complete button!');
+                                btn.click();
+                                clicked = true;
+                                clearInterval(pollInterval);
+                            } else if (result === 'failed' && (text.includes('⏱️') || text.includes('AUTO_FAIL')) && !clicked) {
+                                console.log('Clicking fail button!');
+                                btn.click();
+                                clicked = true;
+                                clearInterval(pollInterval);
+                            }
+                        });
+                    };
                     
-                    buttons.forEach(btn => {
-                        const text = btn.textContent || btn.innerText || '';
-                        if (result === 'complete' && (text.includes('🎯') || text.includes('AUTO_COMPLETE')) && !clicked) {
-                            console.log('Clicking complete button:', text);
-                            btn.click();
-                            clicked = true;
-                            clearInterval(pollInterval);
-                        } else if (result === 'failed' && (text.includes('⏱️') || text.includes('AUTO_FAIL')) && !clicked) {
-                            console.log('Clicking fail button:', text);
-                            btn.click();
-                            clicked = true;
-                            clearInterval(pollInterval);
+                    // Try current document
+                    searchButtons(document);
+                    
+                    // Try parent if available
+                    if (!clicked && window.parent && window.parent.document) {
+                        try {
+                            searchButtons(window.parent.document);
+                        } catch(e) {
+                            console.log('Cannot access parent:', e);
                         }
-                    });
+                    }
+                    
+                    // Try top if available
+                    if (!clicked && window.top && window.top.document) {
+                        try {
+                            searchButtons(window.top.document);
+                        } catch(e) {
+                            console.log('Cannot access top:', e);
+                        }
+                    }
                 }
                 
                 if (pollCount >= maxPolls) {
+                    console.log('Polling timeout');
                     clearInterval(pollInterval);
                 }
             } catch(e) {
@@ -711,11 +744,18 @@ elif st.session_state.game_state == 'playing':
     """
     components.html(auto_advance_html, height=0)
     
-    # Hidden auto-trigger buttons (completely invisible to users)
+    # Hidden auto-trigger buttons (invisible but clickable)
     st.markdown("""
         <style>
-        div[data-testid="column"]:has(button[data-testid*="auto"]) {
-            display: none !important;
+        button[kind="secondary"] p {
+            font-size: 0 !important;
+            line-height: 0 !important;
+        }
+        button[kind="secondary"] {
+            opacity: 0 !important;
+            position: absolute !important;
+            left: -9999px !important;
+            pointer-events: auto !important;
         }
         </style>
     """, unsafe_allow_html=True)
