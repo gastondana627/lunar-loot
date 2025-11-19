@@ -103,15 +103,40 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Chroma Awards Footer
-st.markdown("""
-    <div style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 9998; 
-                background: rgba(0,0,0,0.9); padding: 10px; text-align: center;">
-        <a href="https://www.chromaawards.com" target="_blank" style="color: #6366f1; text-decoration: none; font-size: 14px;">
-            🏆 Chroma Awards 2025
-        </a>
-    </div>
-""", unsafe_allow_html=True)
+# Chroma Awards Footer with animation
+chroma_footer_path = os.path.join(GAME_ROOT_DIR, "backgrounds", "Main_Menu", "Footer_Chroma_Awards.mp4")
+if os.path.exists(chroma_footer_path):
+    try:
+        with open(chroma_footer_path, 'rb') as video_file:
+            footer_video_bytes = base64.b64encode(video_file.read()).decode()
+            st.markdown(f"""
+                <a href="https://www.chromaawards.com" target="_blank" style="text-decoration: none;">
+                    <div style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 9998; 
+                                background: rgba(0,0,0,0.9); box-shadow: 0 -4px 12px rgba(0,0,0,0.5);">
+                        <video width="100%" height="50" autoplay loop muted playsinline>
+                            <source src="data:video/mp4;base64,{footer_video_bytes}" type="video/mp4">
+                        </video>
+                    </div>
+                </a>
+            """, unsafe_allow_html=True)
+    except:
+        st.markdown("""
+            <div style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 9998; 
+                        background: rgba(0,0,0,0.9); padding: 10px; text-align: center;">
+                <a href="https://www.chromaawards.com" target="_blank" style="color: #6366f1; text-decoration: none; font-size: 14px;">
+                    🏆 Chroma Awards 2025
+                </a>
+            </div>
+        """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+        <div style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 9998; 
+                    background: rgba(0,0,0,0.9); padding: 10px; text-align: center;">
+            <a href="https://www.chromaawards.com" target="_blank" style="color: #6366f1; text-decoration: none; font-size: 14px;">
+                🏆 Chroma Awards 2025
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
 
 # ==================== TITLE SCREEN ====================
 if st.session_state.game_state == 'title':
@@ -431,21 +456,42 @@ elif st.session_state.game_state == 'playing':
                         }}
                     }}
                     
-                    // Update game state for external UI
+                    // Calculate game state
                     const elapsed = (Date.now() - startTime) / 1000;
                     const remaining = Math.max(0, LEVEL_TIME - elapsed);
                     const rocksLeft = moonrocks.filter(r => !r.collected).length;
                     
-                    // Send state to parent for UI display (send to both parent and top)
-                    const gameState = {{
-                        type: 'gameState',
-                        score: score,
-                        time: Math.floor(remaining),
-                        rocks: rocksLeft,
-                        combo: combo
-                    }};
-                    window.parent.postMessage(gameState, '*');
-                    window.top.postMessage(gameState, '*');
+                    // Draw score panel ON THE CANVAS (right side)
+                    ctx.fillStyle = 'rgba(10, 14, 39, 0.95)';
+                    ctx.fillRect(canvas.width - 200, 10, 190, combo > 0 ? 180 : 150);
+                    ctx.strokeStyle = 'rgba(99, 102, 241, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(canvas.width - 200, 10, 190, combo > 0 ? 180 : 150);
+                    
+                    ctx.fillStyle = '#6366f1';
+                    ctx.font = 'bold 20px Orbitron';
+                    ctx.fillText('{st.session_state.spacetag or "Player"}', canvas.width - 190, 35);
+                    
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = '18px Orbitron';
+                    ctx.fillText('Score:', canvas.width - 190, 65);
+                    ctx.fillStyle = '#22C55E';
+                    ctx.fillText(score.toString(), canvas.width - 100, 65);
+                    
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillText('Level: {st.session_state.level}', canvas.width - 190, 95);
+                    
+                    ctx.fillStyle = remaining < 10 ? '#EF4444' : '#FFFFFF';
+                    ctx.fillText(`Time: ${{Math.floor(remaining)}}s`, canvas.width - 190, 125);
+                    
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillText(`Rocks: ${{rocksLeft}}`, canvas.width - 190, 155);
+                    
+                    if (combo > 0) {{
+                        ctx.fillStyle = '#22C55E';
+                        ctx.font = 'bold 16px Orbitron';
+                        ctx.fillText(`COMBO x${{combo + 1}}!`, canvas.width - 190, 180);
+                    }}
                     
                     // Check win/lose conditions
                     if (rocksLeft === 0 && !levelComplete) {{
@@ -528,36 +574,21 @@ elif st.session_state.game_state == 'playing':
         </html>
     """
     
-    with col1:
-        components.html(game_html, height=600)
+    # Full width game (score is now inside the canvas on the right)
+    components.html(game_html, height=600, scrolling=False)
     
-    with col2:
-        # Score Panel with LIVE updates
-        score_placeholder = st.empty()
-        score_placeholder.markdown(f"""
-            <div style="background: rgba(10, 14, 39, 0.9); padding: 20px; border-radius: 12px; 
-                        border: 2px solid rgba(99, 102, 241, 0.5); margin-top: 20px;">
-                <h2 style="color: #6366f1; margin: 0 0 20px 0;">{st.session_state.spacetag or 'Player'}</h2>
-                <p style="font-size: 1.5rem; margin: 10px 0;"><strong>Score:</strong> <span style="color: #22C55E;" id="scoreDisplay">{st.session_state.score}</span></p>
-                <p style="font-size: 1.5rem; margin: 10px 0;"><strong>Level:</strong> {st.session_state.level}</p>
-                <p style="font-size: 1.5rem; margin: 10px 0; color: #EF4444;"><strong>Time:</strong> <span id="timeDisplay">30s</span></p>
-                <p style="font-size: 1.5rem; margin: 10px 0;"><strong>Rocks:</strong> <span id="rocksDisplay">{num_rocks}</span></p>
-            </div>
-            
-            <script>
-            // Listen for game state updates from iframe
-            window.addEventListener('message', function(event) {{
-                if (event.data.type === 'gameState') {{
-                    document.getElementById('scoreDisplay').textContent = event.data.score;
-                    document.getElementById('timeDisplay').textContent = event.data.time + 's';
-                    document.getElementById('rocksDisplay').textContent = event.data.rocks;
-                }}
-            }});
-            </script>
-        """, unsafe_allow_html=True)
-        
-        st.write("")
+    col1, col2, col3 = st.columns(3)
+    with col1:
         if st.button("⏸️ PAUSE GAME", use_container_width=True):
+            st.session_state.game_state = 'level_start'
+            st.rerun()
+    with col2:
+        if st.button("✅ NEXT LEVEL", type="primary", use_container_width=True):
+            st.session_state.level += 1
+            st.session_state.game_state = 'level_start'
+            st.rerun()
+    with col3:
+        if st.button("❌ RETRY", use_container_width=True):
             st.session_state.game_state = 'level_start'
             st.rerun()
     
