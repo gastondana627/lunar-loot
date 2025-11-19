@@ -390,9 +390,17 @@ elif st.session_state.game_state == 'playing':
                     ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
                     ctx.globalAlpha = 1.0;
                     
-                    // Draw background overlay on top of video (50% transparency)
+                    // Draw background overlay with dynamic transparency (35% -> 45% as you progress)
                     if (bgImage.complete) {{
-                        ctx.globalAlpha = 0.5;
+                        // Calculate overlay intensity based on rocks collected
+                        const totalRocks = NUM_ROCKS;
+                        const rocksCollected = totalRocks - rocksLeft;
+                        const progress = rocksCollected / totalRocks;
+                        
+                        // Start at 35%, end at 45%
+                        const overlayAlpha = 0.35 + (progress * 0.10);
+                        
+                        ctx.globalAlpha = overlayAlpha;
                         ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
                         ctx.globalAlpha = 1.0;
                     }}
