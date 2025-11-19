@@ -511,8 +511,8 @@ elif st.session_state.game_state == 'playing':
                 // Initialize moonrocks (avoid score panel area on right)
                 for (let i = 0; i < NUM_ROCKS; i++) {{
                     moonrocks.push({{
-                        x: Math.random() * 400 + 30,  // Keep away from right 200px (score panel)
-                        y: Math.random() * 420 + 30,
+                        x: Math.random() * 420 + 30,  // Keep away from right 190px (score panel)
+                        y: Math.random() * 320 + 30,  // Keep away from top 150px (score panel)
                         collected: false
                     }});
                 }}
@@ -655,18 +655,19 @@ elif st.session_state.game_state == 'playing':
                         const thumbExtended = thumb.y < landmarks[2].y;
                         const allFingersCurled = !indexExtended && !middleExtended && ringCurled && pinkyCurled;
                         
-                        if (thumbExtended && allFingersCurled && currentTime - thumbsLastTrigger > 5.0) {{
+                        if (thumbExtended && allFingersCurled && currentTime - thumbsLastTrigger > 6.0) {{
                             score += 100;
                             thumbsLastTrigger = currentTime;
-                            thumbsDisplayUntil = currentTime + 2.0; // Display for 2 seconds
+                            thumbsDisplayUntil = currentTime + 2.5; // Display for 2.5 seconds
                             peaceDisplayUntil = 0; // Cancel peace display
                         }}
-                        // Peace sign gesture (check SECOND - less specific)
+                        // Peace sign gesture (check SECOND - stricter detection)
                         else if (indexExtended && middleExtended && ringCurled && pinkyCurled && 
-                            currentTime - peaceLastTrigger > 5.0 && !thumbExtended) {{
+                            currentTime - peaceLastTrigger > 6.0 && !thumbExtended &&
+                            currentTime > thumbsDisplayUntil) {{ // Don't trigger during thumbs display
                             score += 50;
                             peaceLastTrigger = currentTime;
-                            peaceDisplayUntil = currentTime + 2.0; // Display for 2 seconds
+                            peaceDisplayUntil = currentTime + 2.5; // Display for 2.5 seconds
                             thumbsDisplayUntil = 0; // Cancel thumbs display
                         }}
                     }}
@@ -684,36 +685,41 @@ elif st.session_state.game_state == 'playing':
                         beepSound.play().catch(e => console.log('Audio play failed:', e));
                     }}
                     
-                    // Draw score panel ON THE CANVAS (right side)
-                    ctx.fillStyle = 'rgba(10, 14, 39, 0.95)';
-                    ctx.fillRect(canvas.width - 200, 10, 190, combo > 0 ? 180 : 150);
-                    ctx.strokeStyle = 'rgba(99, 102, 241, 0.8)';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(canvas.width - 200, 10, 190, combo > 0 ? 180 : 150);
+                    // Draw compact score panel (top right corner, smaller)
+                    const panelWidth = 180;
+                    const panelHeight = combo > 0 ? 140 : 120;
+                    const panelX = canvas.width - panelWidth - 10;
+                    const panelY = 10;
+                    
+                    ctx.fillStyle = 'rgba(10, 14, 39, 0.9)';
+                    ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+                    ctx.strokeStyle = 'rgba(99, 102, 241, 0.6)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
                     
                     ctx.fillStyle = '#6366f1';
-                    ctx.font = 'bold 20px Orbitron';
-                    ctx.fillText('{st.session_state.spacetag or "Player"}', canvas.width - 190, 35);
+                    ctx.font = 'bold 16px Orbitron';
+                    ctx.fillText('{st.session_state.spacetag or "Player"}', panelX + 10, panelY + 25);
                     
                     ctx.fillStyle = '#FFFFFF';
-                    ctx.font = '18px Orbitron';
-                    ctx.fillText('Score:', canvas.width - 190, 65);
+                    ctx.font = '14px Orbitron';
+                    ctx.fillText('Score:', panelX + 10, panelY + 50);
                     ctx.fillStyle = '#22C55E';
-                    ctx.fillText(score.toString(), canvas.width - 100, 65);
+                    ctx.fillText(score.toString(), panelX + 70, panelY + 50);
                     
                     ctx.fillStyle = '#FFFFFF';
-                    ctx.fillText('Level: {st.session_state.level}', canvas.width - 190, 95);
+                    ctx.fillText(`Level: {st.session_state.level}`, panelX + 10, panelY + 70);
                     
                     ctx.fillStyle = remaining < 10 ? '#EF4444' : '#FFFFFF';
-                    ctx.fillText(`Time: ${{Math.floor(remaining)}}s`, canvas.width - 190, 125);
+                    ctx.fillText(`Time: ${{Math.floor(remaining)}}s`, panelX + 10, panelY + 90);
                     
                     ctx.fillStyle = '#FFFFFF';
-                    ctx.fillText(`Rocks: ${{rocksLeft}}`, canvas.width - 190, 155);
+                    ctx.fillText(`Rocks: ${{rocksLeft}}`, panelX + 10, panelY + 110);
                     
                     if (combo > 0) {{
                         ctx.fillStyle = '#22C55E';
-                        ctx.font = 'bold 16px Orbitron';
-                        ctx.fillText(`COMBO x${{combo + 1}}!`, canvas.width - 190, 180);
+                        ctx.font = 'bold 14px Orbitron';
+                        ctx.fillText(`COMBO x${{combo + 1}}!`, panelX + 10, panelY + 130);
                     }}
                     
                     // Display gesture bonuses (persistent for 2 seconds)
