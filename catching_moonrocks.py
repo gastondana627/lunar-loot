@@ -25,13 +25,25 @@ SECTOR_NAMES = {
     11: "Comet Atlas", 12: "Oumuamua", 13: "Planet X", 14: "Spaceship"
 }
 
-# Background files mapping
+# Background files mapping - CORRECTED to match sector names
 BACKGROUND_FILES = {
-    1: "Mercury_1.png", 2: "Mars_1.png", 3: "Venus_1.png", 4: "Moon_1.png",
-    5: "Saturn_1.png", 6: "Earth_1.png", 7: "Uranus_1.png", 8: "Uranus_1.png",
-    9: "PlanetX_1.png", 10: "Ceres_1.png", 11: "Comet_3I_Atlas_1.png",
-    12: "Oumuamua_1.png", 13: "PlanetX_1.png", 14: "Spaceship_1.png"
+    1: "Mercury_1.png",      # Mercury
+    2: "Mars_1.png",         # Mars
+    3: "Venus_1.png",        # Venus
+    4: "Moon_1.png",         # Moon
+    5: "Saturn_1.png",       # Saturn
+    6: "Earth_1.png",        # Jupiter (using Earth as closest match)
+    7: "Uranus_1.png",       # Neptune
+    8: "Uranus_1.png",       # Uranus
+    9: "PlanetX_1.png",      # Pluto
+    10: "Ceres_1.png",       # Ceres
+    11: "Comet_3I_Atlas_1.png",  # Comet Atlas
+    12: "Oumuamua_1.png",    # Oumuamua
+    13: "PlanetX_1.png",     # Planet X
+    14: "Spaceship_1.png"    # Spaceship
 }
+
+MAX_LEVELS = 14  # Total number of levels
 
 def load_logo():
     logo_path = os.path.join(GAME_ROOT_DIR, "ui_assets", "branding", "Lunar_Loot_Logo.png")
@@ -377,6 +389,13 @@ elif st.session_state.game_state == 'playing':
                     ctx.globalAlpha = 0.7;
                     ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
                     ctx.globalAlpha = 1.0;
+                    
+                    // Draw background overlay on top of video (50% transparency)
+                    if (bgImage.complete) {{
+                        ctx.globalAlpha = 0.5;
+                        ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+                        ctx.globalAlpha = 1.0;
+                    }}
                     
                     // Draw moonrocks with actual image
                     moonrocks.forEach(rock => {{
@@ -765,7 +784,12 @@ elif st.session_state.game_state == 'playing':
         if st.button("🎯 AUTO_COMPLETE", key="auto_complete", use_container_width=False):
             st.session_state.score += 100  # Bonus for completing
             st.session_state.level += 1
-            st.session_state.game_state = 'level_complete'
+            
+            # Check if all levels complete
+            if st.session_state.level > MAX_LEVELS:
+                st.session_state.game_state = 'game_complete'
+            else:
+                st.session_state.game_state = 'level_complete'
             st.rerun()
     with col2:
         if st.button("⏱️ AUTO_FAIL", key="auto_fail", use_container_width=False):
@@ -923,3 +947,58 @@ elif st.session_state.game_state == 'level_failed':
             </script>
         """
         components.html(snapshot_html, height=600)
+
+# ==================== GAME COMPLETE SCREEN ====================
+elif st.session_state.game_state == 'game_complete':
+    logo_bytes = load_logo()
+    
+    st.markdown("""
+        <style>
+        .stApp {
+            background: linear-gradient(135deg, #0a4d2e 0%, #1a5f3a 50%, #0a3d2e 100%);
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # Centered content
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if logo_bytes:
+            st.markdown(f"""
+                <div style="text-align: center; margin: 40px 0;">
+                    <img src="data:image/png;base64,{logo_bytes}" 
+                         style="max-width: 400px; width: 70%; animation: pulse 2s ease-in-out infinite;">
+                </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown(f"""
+            <div style="text-align: center; margin: 30px 0; background: rgba(10, 14, 39, 0.9); padding: 40px; border-radius: 20px; border: 2px solid rgba(34, 197, 94, 0.5);">
+                <h1 style='color: #22c55e; font-size: 3.5rem; text-shadow: 0 0 20px rgba(34, 197, 94, 0.5); margin: 20px 0;'>
+                    🎉 IGC Journey Complete! 🎉
+                </h1>
+                <p style='color: #f8fafc; font-size: 2rem; margin: 30px 0;'>
+                    <strong>Final Score: {st.session_state.score}</strong>
+                </p>
+                <p style='color: #cbd5e1; font-size: 1.5rem; margin: 20px 0;'>
+                    Levels Completed: {MAX_LEVELS}
+                </p>
+                <p style='color: #22c55e; font-size: 1.2rem; margin: 30px 0; font-style: italic;'>
+                    You've successfully collected moonrocks across all sectors!
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.write("")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("🔄 PLAY AGAIN", type="primary", use_container_width=True):
+                st.session_state.score = 0
+                st.session_state.level = 1
+                st.session_state.game_state = 'title'
+                st.rerun()
+        with col_b:
+            if st.button("🏠 MAIN MENU", use_container_width=True):
+                st.session_state.score = 0
+                st.session_state.level = 1
+                st.session_state.game_state = 'title'
+                st.rerun()
