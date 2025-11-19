@@ -864,100 +864,54 @@ elif st.session_state.game_state == 'playing':
         st.session_state.game_state = 'level_start'
         st.rerun()
     
-    # Auto-advance polling mechanism - searches parent window
-    auto_advance_html = """
+    # Check for auto-advance from localStorage via query params
+    # This runs on every render when in 'playing' state
+    result_check_html = """
         <script>
-        let pollCount = 0;
-        const maxPolls = 40; // 20 seconds max
+        // Check localStorage for game result
+        const result = localStorage.getItem('lunar_loot_result');
+        const rocksLeft = localStorage.getItem('lunar_loot_rocks');
         
-        const pollInterval = setInterval(() => {
-            pollCount++;
+        if (result) {
+            console.log('Game ended:', result, 'rocks:', rocksLeft);
             
-            try {
-                const result = localStorage.getItem('lunar_loot_result');
-                const rocksLeft = localStorage.getItem('lunar_loot_rocks');
-                
-                if (result) {
-                    console.log('Found result:', result, 'rocks:', rocksLeft);
-                    
-                    // Clear localStorage
-                    localStorage.removeItem('lunar_loot_result');
-                    localStorage.removeItem('lunar_loot_rocks');
-                    
-                    // Search in parent window for Streamlit buttons
-                    let clicked = false;
-                    const searchButtons = (doc) => {
-                        const buttons = doc.querySelectorAll('button');
-                        buttons.forEach(btn => {
-                            const text = btn.textContent || btn.innerText || '';
-                            console.log('Checking button:', text);
-                            if (result === 'complete' && (text.includes('🎯') || text.includes('AUTO_COMPLETE')) && !clicked) {
-                                console.log('Clicking complete button!');
-                                btn.click();
-                                clicked = true;
-                                clearInterval(pollInterval);
-                            } else if (result === 'failed' && (text.includes('⏱️') || text.includes('AUTO_FAIL')) && !clicked) {
-                                console.log('Clicking fail button!');
-                                btn.click();
-                                clicked = true;
-                                clearInterval(pollInterval);
-                            }
-                        });
-                    };
-                    
-                    // Try current document
-                    searchButtons(document);
-                    
-                    // Try parent if available
-                    if (!clicked && window.parent && window.parent.document) {
-                        try {
-                            searchButtons(window.parent.document);
-                        } catch(e) {
-                            console.log('Cannot access parent:', e);
+            // Clear the flags
+            localStorage.removeItem('lunar_loot_result');
+            localStorage.removeItem('lunar_loot_rocks');
+            
+            // Trigger state change by setting session state directly
+            if (result === 'complete') {
+                // Find and click the hidden complete button
+                setTimeout(() => {
+                    const buttons = window.parent.document.querySelectorAll('button');
+                    buttons.forEach(btn => {
+                        if (btn.textContent.includes('AUTO_COMPLETE')) {
+                            console.log('Triggering complete');
+                            btn.click();
                         }
-                    }
-                    
-                    // Try top if available
-                    if (!clicked && window.top && window.top.document) {
-                        try {
-                            searchButtons(window.top.document);
-                        } catch(e) {
-                            console.log('Cannot access top:', e);
+                    });
+                }, 100);
+            } else if (result === 'failed') {
+                // Find and click the hidden fail button
+                setTimeout(() => {
+                    const buttons = window.parent.document.querySelectorAll('button');
+                    buttons.forEach(btn => {
+                        if (btn.textContent.includes('AUTO_FAIL')) {
+                            console.log('Triggering fail');
+                            btn.click();
                         }
-                    }
-                }
-                
-                if (pollCount >= maxPolls) {
-                    console.log('Polling timeout');
-                    clearInterval(pollInterval);
-                }
-            } catch(e) {
-                console.log('Polling error:', e);
+                    });
+                }, 100);
             }
-        }, 500);
+        }
         </script>
     """
-    components.html(auto_advance_html, height=0)
+    components.html(result_check_html, height=0)
     
-    # Hidden auto-trigger buttons (invisible but clickable)
-    st.markdown("""
-        <style>
-        button[kind="secondary"] p {
-            font-size: 0 !important;
-            line-height: 0 !important;
-        }
-        button[kind="secondary"] {
-            opacity: 0 !important;
-            position: absolute !important;
-            left: -9999px !important;
-            pointer-events: auto !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
+    # Hidden trigger buttons - these will be clicked by JavaScript
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🎯 AUTO_COMPLETE", key="auto_complete", use_container_width=False):
+        if st.button("AUTO_COMPLETE", key="auto_complete", use_container_width=False):
             st.session_state.score += 100  # Bonus for completing
             st.session_state.level += 1
             
@@ -968,7 +922,7 @@ elif st.session_state.game_state == 'playing':
                 st.session_state.game_state = 'level_complete'
             st.rerun()
     with col2:
-        if st.button("⏱️ AUTO_FAIL", key="auto_fail", use_container_width=False):
+        if st.button("AUTO_FAIL", key="auto_fail", use_container_width=False):
             # Get rocks remaining from localStorage if available
             try:
                 rocks_str = st.query_params.get('rocks', '0')
@@ -977,6 +931,15 @@ elif st.session_state.game_state == 'playing':
                 st.session_state.rocks_remaining = 0
             st.session_state.game_state = 'level_failed'
             st.rerun()
+    
+    # Hide the trigger buttons
+    st.markdown("""
+        <style>
+        button[key="auto_complete"], button[key="auto_fail"] {
+            display: none !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
 # ==================== LEVEL COMPLETE SCREEN ====================
 elif st.session_state.game_state == 'level_complete':
