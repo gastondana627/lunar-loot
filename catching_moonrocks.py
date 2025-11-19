@@ -209,7 +209,7 @@ if st.session_state.game_state == 'intro':
                     AI POWERED BY
                 </p>
                 <p style="color: #cbd5e1; font-size: 0.95rem; margin: 0;">
-                    Google MediaPipe · Freepik · ElevenLabs · Adobe
+                    Google MediaPipe · Freepik · Adobe
                 </p>
             </div>
         """, unsafe_allow_html=True)
@@ -286,8 +286,51 @@ elif st.session_state.game_state == 'title':
             </style>
         """, unsafe_allow_html=True)
     
-    col1, col2 = st.columns([1, 1])
-    with col1:
+    # Music toggle in top right
+    if 'music_playing' not in st.session_state:
+        st.session_state.music_playing = False
+    
+    # Background music player
+    music_html = f"""
+        <div style="position: fixed; top: 20px; right: 80px; z-index: 9999;">
+            <button onclick="toggleMusic()" style="background: rgba(10, 14, 39, 0.9); border: 2px solid #6366f1; 
+                    border-radius: 50%; width: 50px; height: 50px; cursor: pointer; font-size: 24px;">
+                <span id="musicIcon">🔊</span>
+            </button>
+        </div>
+        <audio id="bgMusic" loop>
+            <source src="https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/menu_theme.wav" type="audio/wav">
+        </audio>
+        <script>
+            const music = document.getElementById('bgMusic');
+            const icon = document.getElementById('musicIcon');
+            let isPlaying = false;
+            
+            function toggleMusic() {{
+                if (isPlaying) {{
+                    music.pause();
+                    icon.textContent = '🔇';
+                    isPlaying = false;
+                }} else {{
+                    music.play().catch(e => console.log('Audio play failed:', e));
+                    icon.textContent = '🔊';
+                    isPlaying = true;
+                }}
+            }}
+            
+            // Auto-play on first interaction
+            document.addEventListener('click', () => {{
+                if (!isPlaying) {{
+                    toggleMusic();
+                }}
+            }}, {{ once: true }});
+        </script>
+    """
+    st.markdown(music_html, unsafe_allow_html=True)
+    
+    # Centered content
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
         logo_bytes = load_logo()
         if logo_bytes:
             st.markdown(f"""
