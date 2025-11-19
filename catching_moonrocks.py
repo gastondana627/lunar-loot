@@ -517,6 +517,11 @@ elif st.session_state.game_state == 'playing':
                     }});
                 }}
                 
+                // Clear any leftover localStorage from previous games
+                localStorage.removeItem('lunar_loot_result');
+                localStorage.removeItem('lunar_loot_rocks');
+                localStorage.removeItem('lunar_loot_snapshot');
+                
                 // MediaPipe Hands
                 const hands = new Hands({{
                     locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${{file}}`
