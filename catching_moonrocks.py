@@ -508,10 +508,10 @@ elif st.session_state.game_state == 'playing':
                     }}
                 }}, {{ once: true }});
                 
-                // Initialize moonrocks
+                // Initialize moonrocks (avoid score panel area on right)
                 for (let i = 0; i < NUM_ROCKS; i++) {{
                     moonrocks.push({{
-                        x: Math.random() * 580 + 30,
+                        x: Math.random() * 400 + 30,  // Keep away from right 200px (score panel)
                         y: Math.random() * 420 + 30,
                         collected: false
                     }});
@@ -572,9 +572,9 @@ elif st.session_state.game_state == 'playing':
                     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && !gameOver && !levelComplete) {{
                         const landmarks = results.multiHandLandmarks[0];
                         
-                        // Draw hand skeleton
+                        // Draw hand skeleton (thinner lines)
                         ctx.strokeStyle = '#00FF00';
-                        ctx.lineWidth = 2;
+                        ctx.lineWidth = 1.5;
                         const connections = [
                             [0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],
                             [0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],
@@ -593,12 +593,18 @@ elif st.session_state.game_state == 'playing':
                         const fingerX = indexTip.x * canvas.width;
                         const fingerY = indexTip.y * canvas.height;
                         
+                        // Dynamic finger indicator size (grows with combo and level)
+                        const baseSize = 15;
+                        const comboBonus = combo * 2;
+                        const levelBonus = {st.session_state.level} * 0.5;
+                        const indicatorSize = baseSize + comboBonus + levelBonus;
+                        
                         // Draw finger indicator with glow
-                        ctx.shadowBlur = 10;
+                        ctx.shadowBlur = 12;
                         ctx.shadowColor = '#22C55E';
                         ctx.fillStyle = '#22C55E';
                         ctx.beginPath();
-                        ctx.arc(fingerX, fingerY, 20, 0, Math.PI * 2);
+                        ctx.arc(fingerX, fingerY, indicatorSize, 0, Math.PI * 2);
                         ctx.fill();
                         ctx.shadowBlur = 0;
                         ctx.strokeStyle = '#FFFFFF';
