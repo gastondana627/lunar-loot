@@ -86,20 +86,45 @@ def load_moonrock_image():
             pass
     return None
 
-# Initialize game result tracking in session state
-if 'game_result_pending' not in st.session_state:
-    st.session_state.game_result_pending = None
-if 'rocks_left_pending' not in st.session_state:
-    st.session_state.rocks_left_pending = 0
-
-# Check if there's a pending result to process
-if st.session_state.game_result_pending:
-    result = st.session_state.game_result_pending
-    rocks_left = st.session_state.rocks_left_pending
+# Listen for game result messages
+listener_html = """
+    <script>
+    window.addEventListener('message', (event) => {
+        if (event.data.result) {
+            const result = event.data.result;
+            const rocks = parseInt(event.data.rocks) || 0;
+            
+            // Store in session storage to persist across reruns
+            sessionStorage.setItem('game_result', result);
+            sessionStorage.setItem('game_rocks', rocks.toString());
+            
+            // Force page reload to trigger state change
+            window.location.reload();
+        }
+    });
     
-    # Clear the pending flags
-    st.session_state.game_result_pending = None
-    st.session_state.rocks_left_pending = 0
+    // Check session storage on load
+    const storedResult = sessionStorage.getItem('game_result');
+    const storedRocks = sessionStorage.getItem('game_rocks');
+    if (storedResult) {
+        sessionStorage.removeItem('game_result');
+        sessionStorage.removeItem('game_rocks');
+        
+        // Set query params
+        const url = new URL(window.location);
+        url.searchParams.set('result', storedResult);
+        url.searchParams.set('rocks', storedRocks || '0');
+        window.location.href = url.toString();
+    }
+    </script>
+"""
+components.html(listener_html, height=0)
+
+# Check query params for result
+if 'result' in st.query_params:
+    result = st.query_params.get('result')
+    rocks = st.query_params.get('rocks', '0')
+    st.query_params.clear()
     
     if result == 'complete':
         st.session_state.score += 100
@@ -110,7 +135,10 @@ if st.session_state.game_result_pending:
             st.session_state.game_state = 'level_complete'
         st.rerun()
     elif result == 'failed':
-        st.session_state.rocks_remaining = rocks_left
+        try:
+            st.session_state.rocks_remaining = int(rocks)
+        except:
+            st.session_state.rocks_remaining = 0
         st.session_state.game_state = 'level_failed'
         st.rerun()
 
@@ -446,51 +474,6 @@ elif st.session_state.game_state == 'level_start':
 
 # ==================== PLAYING STATE ====================
 elif st.session_state.game_state == 'playing':
-    # Check for game result from localStorage and trigger state change
-    result_checker_html = """
-        <script>
-        // Poll localStorage for game result
-        let checkCount = 0;
-        const checkInterval = setInterval(() => {
-            checkCount++;
-            const result = localStorage.getItem('lunar_loot_result');
-            const rocks = localStorage.getItem('lunar_loot_rocks');
-            
-            if (result) {
-                console.log('Game ended:', result, 'rocks:', rocks);
-                localStorage.removeItem('lunar_loot_result');
-                localStorage.removeItem('lunar_loot_rocks');
-                
-                // Use Streamlit's setComponentValue to trigger rerun
-                window.parent.postMessage({
-                    type: 'streamlit:setComponentValue',
-                    data: {
-                        result: result,
-                        rocks: parseInt(rocks) || 0
-                    }
-                }, '*');
-                
-                clearInterval(checkInterval);
-            }
-            
-            if (checkCount > 60) { // 30 seconds max
-                clearInterval(checkInterval);
-            }
-        }, 500);
-        </script>
-    """
-    result_data = components.html(result_checker_html, height=0)
-    
-    # Process the result if received
-    if result_data:
-        if result_data.get('result') == 'complete':
-            st.session_state.game_result_pending = 'complete'
-            st.session_state.rocks_left_pending = 0
-            st.rerun()
-        elif result_data.get('result') == 'failed':
-            st.session_state.game_result_pending = 'failed'
-            st.session_state.rocks_left_pending = result_data.get('rocks', 0)
-            st.rerun()
     
     # Full screen space background
     bg_bytes = load_background(st.session_state.level)
@@ -930,15 +913,35 @@ elif st.session_state.game_state == 'playing':
     components.html(game_html, height=600, scrolling=False)
     
     st.write("")
-    st.success("🎮 Game will automatically advance when timer expires or all rocks are collected!")
+    st.success("🎮 Click CONTINUE when level ends!")
     
-    # Pause button - allows player to return to level start screen
+    # Pause button
     if st.button("⏸️ PAUSE GAME", use_container_width=True, key="pause_btn"):
-        st.session_state.is_resuming = True  # Set flag for resume
+        st.session_state.is_resuming = True
         st.session_state.game_state = 'level_start'
         st.rerun()
     
-    # Note: Auto-advance is handled at app initialization via query params
+    st.write("")
+    
+    # Continue button - checks localStorage and advances
+    if st.button("▶️ CONTINUE", type="primary", use_container_width=True, key="continue_btn"):
+        # Check localStorage via a hidden component
+        check_html = """
+            <script>
+            const result = localStorage.getItem('lunar_loot_result');
+            const rocks = localStorage.getItem('lunar_loot_rocks');
+            if (result) {
+                localStorage.removeItem('lunar_loot_result');
+                localStorage.removeItem('lunar_loot_rocks');
+                // Send to parent
+                window.parent.postMessage({result: result, rocks: rocks || '0'}, '*');
+            }
+            </script>
+        """
+        components.html(check_html, height=0)
+        
+        # Trigger rerun to check again
+        st.rerun()
 
 # ==================== LEVEL COMPLETE SCREEN ====================
 elif st.session_state.game_state == 'level_complete':
