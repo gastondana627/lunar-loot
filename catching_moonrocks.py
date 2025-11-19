@@ -303,6 +303,7 @@ elif st.session_state.game_state == 'playing':
                 let levelComplete = false;
                 let snapshotTaken = false;
                 let autoAdvanceTriggered = false;
+                let lastBeepSecond = -1;
                 
                 // Load background image
                 const bgImage = new Image();
@@ -311,6 +312,12 @@ elif st.session_state.game_state == 'playing':
                 // Load moonrock image
                 const moonrockImage = new Image();
                 moonrockImage.src = '{moonrock_data_url}';
+                
+                // Load audio files
+                const collectSound = new Audio('https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/collect.wav');
+                const completeSound = new Audio('https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/level_complete.wav');
+                const failSound = new Audio('https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/level_failed.wav');
+                const beepSound = new Audio('https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/Beep.wav');
                 
                 // Initialize moonrocks
                 for (let i = 0; i < NUM_ROCKS; i++) {{
@@ -334,6 +341,9 @@ elif st.session_state.game_state == 'playing':
                 }});
                 
                 hands.onResults((results) => {{
+                    // Get current time at the start of frame
+                    const currentTime = Date.now() / 1000;
+                    
                     // Clear canvas
                     ctx.fillStyle = '#0a0e27';
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -400,12 +410,15 @@ elif st.session_state.game_state == 'playing':
                         ctx.stroke();
                         
                         // Collision detection with combo system
-                        const currentTime = Date.now() / 1000;
                         moonrocks.forEach(rock => {{
                             if (!rock.collected) {{
                                 const dist = Math.sqrt((fingerX - rock.x)**2 + (fingerY - rock.y)**2);
                                 if (dist < 50) {{
                                     rock.collected = true;
+                                    
+                                    // Play collect sound
+                                    collectSound.currentTime = 0;
+                                    collectSound.play().catch(e => console.log('Audio play failed:', e));
                                     
                                     // Combo system
                                     if (currentTime - lastCollectTime < 2.0) {{
@@ -459,6 +472,14 @@ elif st.session_state.game_state == 'playing':
                     const elapsed = (Date.now() - startTime) / 1000;
                     const remaining = Math.max(0, LEVEL_TIME - elapsed);
                     const rocksLeft = moonrocks.filter(r => !r.collected).length;
+                    
+                    // Beep sound for last 10 seconds
+                    const currentSecond = Math.floor(remaining);
+                    if (remaining > 0 && remaining <= 10 && currentSecond !== lastBeepSecond) {{
+                        lastBeepSecond = currentSecond;
+                        beepSound.currentTime = 0;
+                        beepSound.play().catch(e => console.log('Audio play failed:', e));
+                    }}
                     
                     // Draw score panel ON THE CANVAS (right side)
                     ctx.fillStyle = 'rgba(10, 14, 39, 0.95)';
@@ -539,6 +560,9 @@ elif st.session_state.game_state == 'playing':
                         ctx.fillStyle = '#FFFFFF';
                         ctx.fillText(`Score: ${{score}}`, canvas.width/2 - 80, canvas.height/2 + 50);
                         
+                        // Play success sound
+                        completeSound.play().catch(e => console.log('Audio play failed:', e));
+                        
                         // Stop camera
                         camera.stop();
                         video.srcObject.getTracks().forEach(track => track.stop());
@@ -581,6 +605,9 @@ elif st.session_state.game_state == 'playing':
                         ctx.fillStyle = '#FFFFFF';
                         ctx.fillText(`Final Score: ${{score}}`, canvas.width/2 - 120, canvas.height/2 + 50);
                         ctx.fillText(`Rocks Remaining: ${{rocksLeft}}`, canvas.width/2 - 150, canvas.height/2 + 90);
+                        
+                        // Play fail sound
+                        failSound.play().catch(e => console.log('Audio play failed:', e));
                         
                         // Stop camera
                         camera.stop();
