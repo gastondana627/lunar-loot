@@ -1013,7 +1013,7 @@ elif st.session_state.game_state == 'level_complete':
 
 # ==================== LEVEL FAILED SCREEN ====================
 elif st.session_state.game_state == 'level_failed':
-    # Dark background
+    # Dark space background
     bg_bytes = load_background(st.session_state.level)
     if bg_bytes:
         st.markdown(f"""
@@ -1022,7 +1022,6 @@ elif st.session_state.game_state == 'level_failed':
                 background-image: url(data:image/png;base64,{bg_bytes});
                 background-size: cover;
                 background-position: center;
-                filter: brightness(0.4);
             }}
             .stApp::before {{
                 content: '';
@@ -1031,7 +1030,7 @@ elif st.session_state.game_state == 'level_failed':
                 left: 0;
                 width: 100%;
                 height: 100%;
-                background: rgba(10, 14, 39, 0.7);
+                background: rgba(10, 14, 39, 0.85);
                 z-index: 0;
             }}
             </style>
@@ -1039,36 +1038,46 @@ elif st.session_state.game_state == 'level_failed':
     
     col1, col2 = st.columns([1, 1])
     
-    # Left: Failure message
+    # Left: Game Over Stats
     with col1:
         rocks_left = st.session_state.rocks_remaining
+        player_name = st.session_state.spacetag or "Anonymous"
+        
         st.markdown(f"""
             <div style="background: rgba(10, 14, 39, 0.95); padding: 40px; border-radius: 12px; 
                         backdrop-filter: blur(12px); border: 2px solid rgba(239, 68, 68, 0.5); position: relative; z-index: 1;">
-                <h1 style='color: #ef4444; font-size: 3rem; margin: 10px 0; text-shadow: 0 0 20px rgba(239, 68, 68, 0.5);'>
-                    Time's Up!
+                <h1 style='color: #ef4444; font-size: 2.5rem; margin: 0 0 30px 0; font-weight: 700;'>
+                    Game Over!
                 </h1>
-                <p style='color: #cbd5e1; font-size: 1.3rem; margin: 20px 0;'>
-                    Moonrocks Remaining: <span style='color: #ef4444; font-weight: bold;'>{rocks_left}</span>
+                
+                <p style='color: #cbd5e1; font-size: 1.2rem; margin: 15px 0;'>
+                    <strong>{player_name}</strong>
                 </p>
-                <p style='color: #f8fafc; font-size: 1.5rem; margin: 20px 0;'>
-                    <strong>Current Score: {st.session_state.score}</strong>
+                
+                <p style='color: #f8fafc; font-size: 1.8rem; margin: 20px 0;'>
+                    <strong>Final Score: {st.session_state.score}</strong>
                 </p>
-                <p style='color: #cbd5e1; font-size: 1.1rem;'>Level: {st.session_state.level}</p>
-                <p style='color: #ef4444; font-size: 1rem; margin-top: 30px; font-style: italic;'>
-                    You didn't collect all the moonrocks in time!
+                
+                <p style='color: #cbd5e1; font-size: 1.2rem; margin: 15px 0;'>
+                    Level Reached: {st.session_state.level}
                 </p>
+                
+                <div style='background: rgba(239, 68, 68, 0.2); padding: 15px; border-radius: 8px; margin: 25px 0;'>
+                    <p style='color: #ef4444; font-size: 1rem; margin: 0;'>
+                        Moonrocks Remaining: {rocks_left}
+                    </p>
+                </div>
             </div>
         """, unsafe_allow_html=True)
         
         st.write("")
         col_a, col_b = st.columns(2)
         with col_a:
-            if st.button("🔄 RETRY", type="primary", use_container_width=True):
+            if st.button("Play Again", type="primary", use_container_width=True):
                 st.session_state.game_state = 'level_start'
                 st.rerun()
         with col_b:
-            if st.button("🏠 END MISSION", use_container_width=True):
+            if st.button("Main Menu", use_container_width=True):
                 st.session_state.score = 0
                 st.session_state.level = 1
                 st.session_state.game_state = 'title'
@@ -1078,18 +1087,18 @@ elif st.session_state.game_state == 'level_failed':
     with col2:
         st.markdown("""
             <div style="background: rgba(10, 14, 39, 0.95); padding: 20px; border-radius: 12px; 
-                        backdrop-filter: blur(12px); border: 2px solid rgba(239, 68, 68, 0.5); position: relative; z-index: 1;">
-                <h3 style='color: #ef4444; text-align: center; margin-bottom: 15px;'>📸 Mission Snapshot</h3>
+                        backdrop-filter: blur(12px); border: 2px solid rgba(239, 68, 68, 0.5); position: relative; z-index: 1; margin-bottom: 20px;">
+                <h3 style='color: #f8fafc; text-align: center; margin: 0;'>Your Space Selfie!</h3>
             </div>
         """, unsafe_allow_html=True)
         
         # Snapshot capture and download
         snapshot_html = """
-            <div style="text-align: center; margin-top: 10px; position: relative; z-index: 1;">
-                <canvas id="snapshotCanvas" width="640" height="480" style="max-width: 100%; border-radius: 8px; border: 2px solid #ef4444;"></canvas>
-                <br><br>
-                <a id="downloadLink" download="lunar_loot_attempt.png" style="display: inline-block; padding: 12px 24px; background: #ef4444; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: Orbitron;">
-                    ⬇️ Download Snapshot
+            <div style="text-align: center; position: relative; z-index: 1;">
+                <canvas id="snapshotCanvas" width="640" height="480" style="max-width: 100%; border-radius: 8px; border: 2px solid #ef4444; margin-bottom: 20px;"></canvas>
+                <br>
+                <a id="downloadLink" download="lunar_loot_spaceshot.png" style="display: inline-block; padding: 14px 28px; background: #ef4444; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-family: Orbitron; font-size: 1rem;">
+                    Download Selfie
                 </a>
             </div>
             <script>
