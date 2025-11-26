@@ -142,6 +142,13 @@ if 'result' in st.query_params:
         st.session_state.game_state = 'level_failed'
         st.rerun()
 
+# Check for level advance
+if 'advance' in st.query_params:
+    st.query_params.clear()
+    if st.session_state.game_state == 'level_complete':
+        st.session_state.game_state = 'level_start'
+        st.rerun()
+
 # Session state
 if 'game_state' not in st.session_state:
     st.session_state.game_state = 'intro'  # Start with intro screen
@@ -157,6 +164,8 @@ if 'rocks_remaining' not in st.session_state:
     st.session_state.rocks_remaining = 0
 if 'is_resuming' not in st.session_state:
     st.session_state.is_resuming = False
+if 'level_complete_time' not in st.session_state:
+    st.session_state.level_complete_time = None
 
 # Custom CSS
 st.markdown("""
@@ -987,35 +996,29 @@ elif st.session_state.game_state == 'level_complete':
             </div>
         """, unsafe_allow_html=True)
     
-    # Auto-advance to next level after 3 seconds using JavaScript
-    auto_advance_html = """
+    # Auto-advance using meta refresh (most reliable method)
+    st.markdown("""
+        <meta http-equiv="refresh" content="3">
         <script>
+        // After 3 seconds, set flag and reload
         setTimeout(() => {
-            // Find and click the hidden continue button
-            const buttons = window.parent.document.querySelectorAll('button');
-            buttons.forEach(btn => {
-                if (btn.textContent.includes('CONTINUE_NEXT')) {
-                    btn.click();
-                }
-            });
-        }, 3000);
+            localStorage.setItem('advance_to_next_level', 'true');
+        }, 2900);
+        </script>
+    """, unsafe_allow_html=True)
+    
+    # Check if we should advance
+    advance_check = """
+        <script>
+        if (localStorage.getItem('advance_to_next_level') === 'true') {
+            localStorage.removeItem('advance_to_next_level');
+            const url = new URL(window.location);
+            url.searchParams.set('advance', 'next');
+            window.location.href = url.toString();
+        }
         </script>
     """
-    components.html(auto_advance_html, height=0)
-    
-    # Hidden continue button
-    if st.button("CONTINUE_NEXT", key="continue_next"):
-        st.session_state.game_state = 'level_start'
-        st.rerun()
-    
-    # Hide the button
-    st.markdown("""
-        <style>
-        button[key="continue_next"] {
-            display: none !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    components.html(advance_check, height=0)
 
 # ==================== LEVEL FAILED SCREEN ====================
 elif st.session_state.game_state == 'level_failed':
