@@ -987,11 +987,35 @@ elif st.session_state.game_state == 'level_complete':
             </div>
         """, unsafe_allow_html=True)
     
-    # Auto-advance to next level after 3 seconds
-    import time
-    time.sleep(3)
-    st.session_state.game_state = 'level_start'
-    st.rerun()
+    # Auto-advance to next level after 3 seconds using JavaScript
+    auto_advance_html = """
+        <script>
+        setTimeout(() => {
+            // Find and click the hidden continue button
+            const buttons = window.parent.document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                if (btn.textContent.includes('CONTINUE_NEXT')) {
+                    btn.click();
+                }
+            });
+        }, 3000);
+        </script>
+    """
+    components.html(auto_advance_html, height=0)
+    
+    # Hidden continue button
+    if st.button("CONTINUE_NEXT", key="continue_next"):
+        st.session_state.game_state = 'level_start'
+        st.rerun()
+    
+    # Hide the button
+    st.markdown("""
+        <style>
+        button[key="continue_next"] {
+            display: none !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
 # ==================== LEVEL FAILED SCREEN ====================
 elif st.session_state.game_state == 'level_failed':
