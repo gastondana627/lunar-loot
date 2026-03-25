@@ -539,11 +539,18 @@ elif st.session_state.game_state == 'playing':
                     }}
                 }}, {{ once: true }});
                 
-                // Initialize moonrocks (avoid score panel area on right)
+                // Initialize moonrocks (avoid score panel area on right initially)
+                // Base speed increases with level
+                const baseSpeed = 0.5 + ({st.session_state.level} * 0.3);
+                
                 for (let i = 0; i < NUM_ROCKS; i++) {{
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = baseSpeed * (0.8 + Math.random() * 0.6);
                     moonrocks.push({{
                         x: Math.random() * 420 + 30,  // Keep away from right 190px (score panel)
                         y: Math.random() * 320 + 30,  // Keep away from top 150px (score panel)
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
                         collected: false
                     }});
                 }}
@@ -592,8 +599,24 @@ elif st.session_state.game_state == 'playing':
                         ctx.globalAlpha = 1.0;
                     }}
                     
-                    // Draw moonrocks with actual image
+                    // Update and draw moonrocks
                     moonrocks.forEach(rock => {{
+                        if (!rock.collected && !gameOver && !levelComplete) {{
+                            // Zero-gravity drift update
+                            rock.x += rock.vx;
+                            rock.y += rock.vy;
+                            
+                            // Bounce off canvas boundaries (with a 30px padding for the rock's radius)
+                            if (rock.x < 30 || rock.x > canvas.width - 30) {{
+                                rock.vx *= -1;
+                                rock.x = rock.x < 30 ? 30 : canvas.width - 30;
+                            }}
+                            if (rock.y < 30 || rock.y > canvas.height - 30) {{
+                                rock.vy *= -1;
+                                rock.y = rock.y < 30 ? 30 : canvas.height - 30;
+                            }}
+                        }}
+                        
                         if (!rock.collected && moonrockImage.complete) {{
                             // Glow effect
                             ctx.shadowBlur = 15;
