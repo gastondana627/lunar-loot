@@ -86,39 +86,7 @@ def load_moonrock_image():
             pass
     return None
 
-# Listen for game result messages
-listener_html = """
-    <script>
-    window.addEventListener('message', (event) => {
-        if (event.data.result) {
-            const result = event.data.result;
-            const rocks = parseInt(event.data.rocks) || 0;
-            
-            // Store in session storage to persist across reruns
-            sessionStorage.setItem('game_result', result);
-            sessionStorage.setItem('game_rocks', rocks.toString());
-            
-            // Force page reload to trigger state change
-            window.location.reload();
-        }
-    });
-    
-    // Check session storage on load
-    const storedResult = sessionStorage.getItem('game_result');
-    const storedRocks = sessionStorage.getItem('game_rocks');
-    if (storedResult) {
-        sessionStorage.removeItem('game_result');
-        sessionStorage.removeItem('game_rocks');
-        
-        // Set query params
-        const url = new URL(window.location);
-        url.searchParams.set('result', storedResult);
-        url.searchParams.set('rocks', storedRocks || '0');
-        window.location.href = url.toString();
-    }
-    </script>
-"""
-components.html(listener_html, height=0)
+# listener_html removed as it is incompatible with Streamlit cross-iframe CORS
 
 # Check query params for result
 if 'result' in st.query_params:
@@ -915,7 +883,12 @@ elif st.session_state.game_state == 'playing':
                                 
                                 if (countdown <= 0) {{
                                     clearInterval(countInterval);
-                                    window.parent.postMessage({{result: 'complete', rocks: '0'}}, '*');
+                                    let pUrlStr = document.referrer;
+                                    if (!pUrlStr) pUrlStr = "https://lunar-loot.streamlit.app/";
+                                    const pUrl = new URL(pUrlStr);
+                                    pUrl.searchParams.set('result', 'complete');
+                                    pUrl.searchParams.set('rocks', '0');
+                                    window.parent.location.href = pUrl.toString();
                                 }}
                                 countdown--;
                             }}, 1000);
@@ -969,7 +942,12 @@ elif st.session_state.game_state == 'playing':
                                 
                                 if (countdown <= 0) {{
                                     clearInterval(countInterval);
-                                    window.parent.postMessage({{result: 'failed', rocks: rocksLeft.toString()}}, '*');
+                                    let pUrlStr = document.referrer;
+                                    if (!pUrlStr) pUrlStr = "https://lunar-loot.streamlit.app/";
+                                    const pUrl = new URL(pUrlStr);
+                                    pUrl.searchParams.set('result', 'failed');
+                                    pUrl.searchParams.set('rocks', rocksLeft.toString());
+                                    window.parent.location.href = pUrl.toString();
                                 }}
                                 countdown--;
                             }}, 1000);
