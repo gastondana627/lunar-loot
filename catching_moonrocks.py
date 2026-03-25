@@ -609,12 +609,16 @@ elif st.session_state.game_state == 'playing':
                 const completeSound = new Audio('https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/level_complete.wav');
                 const failSound = new Audio('https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/level_failed.wav');
                 const beepSound = new Audio('https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/Beep.wav');
+                const countdownSound = new Audio('https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/_Three__Two__One__Sm.mp3');
+                const selfieSound = new Audio('https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/selfie_countdown.mp3');
                 
                 // Unlock audio on first user interaction
                 let audioUnlocked = false;
                 document.addEventListener('click', () => {{
                     if (!audioUnlocked) {{
                         collectSound.play().then(() => collectSound.pause()).catch(() => {{}});
+                        // Play 3-2-1 countdown on game start
+                        countdownSound.play().catch(() => {{}});
                         audioUnlocked = true;
                     }}
                 }}, {{ once: true }});
@@ -894,6 +898,9 @@ elif st.session_state.game_state == 'playing':
                             const snapshotData = snapshotCanvas.toDataURL('image/png');
                             localStorage.setItem('lunar_loot_snapshot', snapshotData);
                             snapshotTaken = true;
+                            // Play selfie capture sound
+                            selfieSound.currentTime = 0;
+                            selfieSound.play().catch(e => console.log('Selfie sound failed:', e));
                         }}
                         
                         // GREEN overlay for success
@@ -1098,6 +1105,8 @@ elif st.session_state.game_state == 'level_complete':
 
 # ==================== LEVEL FAILED SCREEN ====================
 elif st.session_state.game_state == 'level_failed':
+    # Play mission abort sound
+    st.audio("https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/Space_mission_abort_unsuccessful2.wav", format="audio/wav", autoplay=True)
     # Dark space background
     bg_bytes = load_background(st.session_state.level)
     if bg_bytes:
@@ -1221,6 +1230,8 @@ elif st.session_state.game_state == 'level_failed':
 # ==================== GAME COMPLETE SCREEN ====================
 elif st.session_state.game_state == 'game_complete':
     logo_bytes = load_logo()
+    # Play mission success fanfare
+    st.audio("https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/Space_mission_succes-2.wav", format="audio/wav", autoplay=True)
     
     # Clean screen - hide all previous content
     st.markdown("""
