@@ -631,13 +631,35 @@ elif st.session_state.game_state == 'playing':
                     const angle = Math.random() * Math.PI * 2;
                     const speed = baseSpeed * (0.8 + Math.random() * 0.6);
                     moonrocks.push({{
-                        x: Math.random() * 420 + 30,  // Keep away from right 190px (score panel)
-                        y: Math.random() * 320 + 30,  // Keep away from top 150px (score panel)
+                        x: Math.random() * 420 + 30,
+                        y: Math.random() * 320 + 30,
                         vx: Math.cos(angle) * speed,
                         vy: Math.sin(angle) * speed,
                         collected: false
                     }});
                 }}
+                
+                // ============ PARTICLE SYSTEM ============
+                const particles = [];
+                const PARTICLE_COLORS = ['#00f3ff', '#a855f7', '#22c55e', '#fbbf24', '#f472b6', '#fff'];
+                
+                function spawnParticles(x, y) {{
+                    const count = 10 + Math.floor(Math.random() * 6); // 10-15
+                    for (let i = 0; i < count; i++) {{
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = 2 + Math.random() * 4;
+                        particles.push({{
+                            x, y,
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed,
+                            alpha: 1.0,
+                            size: 3 + Math.random() * 5,
+                            color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
+                            decay: 0.025 + Math.random() * 0.03
+                        }});
+                    }}
+                }}
+                // =========================================
                 
                 // Clear any leftover localStorage from previous games
                 localStorage.removeItem('lunar_loot_result');
@@ -711,6 +733,26 @@ elif st.session_state.game_state == 'playing':
                         }}
                     }});
                     
+                    // ============ RENDER PARTICLES ============
+                    for (let i = particles.length - 1; i >= 0; i--) {{
+                        const p = particles[i];
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += 0.08; // slight gravity drift
+                        p.alpha -= p.decay;
+                        if (p.alpha <= 0) {{ particles.splice(i, 1); continue; }}
+                        ctx.save();
+                        ctx.globalAlpha = p.alpha;
+                        ctx.shadowBlur = 12;
+                        ctx.shadowColor = p.color;
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }}
+                    // ==========================================
+                    
                     // Process hand landmarks
                     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && !gameOver && !levelComplete) {{
                         const landmarks = results.multiHandLandmarks[0];
@@ -760,6 +802,7 @@ elif st.session_state.game_state == 'playing':
                                 const dist = Math.sqrt((fingerX - rock.x)**2 + (fingerY - rock.y)**2);
                                 if (dist < 50) {{
                                     rock.collected = true;
+                                    spawnParticles(rock.x, rock.y);
                                     
                                     // Play collect sound
                                     collectSound.currentTime = 0;
