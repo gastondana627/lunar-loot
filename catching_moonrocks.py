@@ -913,9 +913,6 @@ elif st.session_state.game_state == 'playing':
             </script>
         """
         components.html(check_html, height=0)
-        
-        # Trigger rerun to check again
-        st.rerun()
 
 # ==================== LEVEL COMPLETE SCREEN ====================
 elif st.session_state.game_state == 'level_complete':
