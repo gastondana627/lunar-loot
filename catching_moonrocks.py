@@ -172,18 +172,71 @@ if 'level_complete_time' not in st.session_state:
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;900&display=swap');
+    
+    /* Reset and Base Styles */
     html, body, [class*="css"], * {
         font-family: 'Orbitron', sans-serif !important;
+        color: #e0e7ff;
     }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    
     .stApp {
         background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
     }
+
+    /* PREMIUN SCI-FI BUTTONS (Start Here / Hall of Fame style) */
+    div[data-testid="stButton"] button {
+        background: rgba(10, 16, 40, 0.85) !important;
+        border: 2px solid #a855f7 !important;
+        box-shadow: 0 0 15px rgba(168, 85, 247, 0.4), inset 0 0 15px rgba(0, 243, 255, 0.1) !important;
+        color: #FFFFFF !important;
+        font-weight: 900 !important;
+        font-size: 1.2rem !important;
+        letter-spacing: 3px !important;
+        text-transform: uppercase !important;
+        padding: 15px 30px !important;
+        border-radius: 8px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        width: 100% !important;
+        height: auto !important;
+    }
+
+    /* Horizontal Flare Effect */
+    div[data-testid="stButton"] button::after {
+        content: "" !important;
+        position: absolute !important;
+        top: 50% !important;
+        left: -100% !important;
+        width: 300% !important;
+        height: 1px !important;
+        background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.8), transparent) !important;
+        transform: translateY(-50%) !important;
+        transition: left 0.5s ease-in-out !important;
+    }
+
+    div[data-testid="stButton"] button:hover {
+        transform: scale(1.03) translateY(-2px) !important;
+        border-color: #00f3ff !important;
+        box-shadow: 0 0 25px rgba(0, 243, 255, 0.6), inset 0 0 10px rgba(168, 85, 247, 0.3) !important;
+        color: #00f3ff !important;
+    }
+
+    div[data-testid="stButton"] button:hover::after {
+        left: 100% !important;
+    }
+
+    div[data-testid="stButton"] button:active {
+        transform: scale(0.98) !important;
+    }
+
     @keyframes pulse {
         0%, 100% { opacity: 1; transform: scale(1); }
         50% { opacity: 0.8; transform: scale(1.05); }
     }
+
     /* Hide Native Audio Player */
     [data-testid="stAudio"] {
         display: none !important;
@@ -571,6 +624,66 @@ elif st.session_state.game_state == 'playing':
                 function returnToPython(val) {{
                     sendToStreamlit("streamlit:setComponentValue", {{value: val}});
                 }}
+                
+                // --- NEON PROGRESS BAR HELPER ---
+                function drawLiquidProgressBar(progress, rocksLeft) {{
+                    const barWidth = 400;
+                    const barHeight = 24;
+                    const x = (canvas.width - barWidth) / 2;
+                    const y = 15;
+                    
+                    // Outer Frame
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(0, 243, 255, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x, y, barWidth, barHeight);
+                    
+                    // Border Glow
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = 'rgba(168, 85, 247, 0.4)';
+                    ctx.strokeStyle = 'rgba(168, 85, 247, 0.7)';
+                    ctx.strokeRect(x-1, y-1, barWidth+2, barHeight+2);
+                    ctx.restore();
+
+                    // Clipping for Liquid
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(x, y, barWidth * progress, barHeight);
+                    ctx.clip();
+
+                    // Draw Liquid with Sine Wave Top
+                    const time = Date.now() / 1000;
+                    const waveHeight = 4;
+                    const waveSpeed = 2;
+                    const frequency = 0.04;
+                    
+                    const gradient = ctx.createLinearGradient(x, y, x + barWidth, y);
+                    gradient.addColorStop(0, '#00f3ff');
+                    gradient.addColorStop(1, '#a855f7');
+                    ctx.fillStyle = gradient;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(x, y + barHeight);
+                    for (let px = 0; px <= barWidth; px += 2) {{
+                        const py = y + (barHeight/2) + Math.sin(px * frequency + time * waveSpeed) * waveHeight;
+                        ctx.lineTo(x + px, py);
+                    }}
+                    ctx.lineTo(x + barWidth, y + barHeight);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Inner Glow
+                    ctx.globalAlpha = 0.3 * (1 + Math.sin(time * 3));
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fill();
+                    ctx.restore();
+                    
+                    // Text Indicator
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = 'bold 10px Orbitron';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`SECTOR PROGRESS: ${{Math.round(progress * 100)}}%`, x + barWidth/2, y + 16);
+                }}
                 // ---------------------------------------------
                 
                 const video = document.getElementById('video');
@@ -862,6 +975,10 @@ elif st.session_state.game_state == 'playing':
                     const elapsed = (Date.now() - startTime) / 1000;
                     const remaining = Math.max(0, LEVEL_TIME - elapsed);
                     const rocksLeft = moonrocks.filter(r => !r.collected).length;
+                    const progress = (NUM_ROCKS - rocksLeft) / NUM_ROCKS;
+                    
+                    // Draw Liquid Progress Bar
+                    drawLiquidProgressBar(progress, rocksLeft);
                     
                     // Beep sound for last 10 seconds
                     const currentSecond = Math.floor(remaining);
@@ -898,9 +1015,6 @@ elif st.session_state.game_state == 'playing':
                     
                     ctx.fillStyle = remaining < 10 ? '#EF4444' : '#FFFFFF';
                     ctx.fillText(`Time: ${{Math.floor(remaining)}}s`, panelX + 10, panelY + 90);
-                    
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.fillText(`Rocks: ${{rocksLeft}}`, panelX + 10, panelY + 110);
                     
                     if (combo > 0) {{
                         ctx.fillStyle = '#22C55E';
