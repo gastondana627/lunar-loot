@@ -88,36 +88,64 @@ def load_moonrock_image():
 
 import json
 import datetime
+import gspread
+from google.oauth2.service_account import Credentials
 
 HIGH_SCORES_FILE = os.path.join(GAME_ROOT_DIR, "high_scores.json")
+GSHEET_URL = "https://docs.google.com/spreadsheets/d/1VV1xnnJ_kohhrwUhLBLcDX15VVvXWeb3Rg4CcmLLvpk"
+GSHEET_SCOPES = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive",
+]
+
+def _get_gsheet():
+    """Authenticate and return the first worksheet of the leaderboard sheet."""
+    try:
+        creds_dict = dict(st.secrets["connections"]["gsheets"])
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+        creds = Credentials.from_service_account_info(creds_dict, scopes=GSHEET_SCOPES)
+        client = gspread.authorize(creds)
+        return client.open_by_url(GSHEET_URL).sheet1
+    except Exception:
+        return None
 
 def load_high_scores() -> list:
-    if not os.path.exists(HIGH_SCORES_FILE):
-        return []
+    sheet = _get_gsheet()
+    if sheet is None:
+        # Fallback to local JSON when credentials are not yet configured
+        if not os.path.exists(HIGH_SCORES_FILE):
+            return []
+        try:
+            with open(HIGH_SCORES_FILE, 'r') as f:
+                data = json.load(f)
+                return data if isinstance(data, list) else []
+        except:
+            return []
     try:
-        with open(HIGH_SCORES_FILE, 'r') as f:
-            data = json.load(f)
-            if isinstance(data, list):
-                return data
+        records = sheet.get_all_records()
+        records.sort(key=lambda x: int(x.get("score", 0)) if str(x.get("score", "0")).isdigit() else 0, reverse=True)
+        return records
     except:
-        pass
-    return []
+        return []
 
 def save_high_score(spacetag, score, level):
     if not spacetag or score <= 0:
         return
-    scores = load_high_scores()
-    scores.append({
-        "spacetag": spacetag,
-        "score": score,
-        "level": level,
-        "timestamp": datetime.datetime.now().isoformat()
-    })
-    scores.sort(key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0, reverse=True)
-    scores = scores[:100] # type: ignore
+    timestamp = datetime.datetime.now().isoformat()
+    sheet = _get_gsheet()
+    if sheet is None:
+        # Fallback: write to local JSON
+        scores = load_high_scores()
+        scores.append({"spacetag": spacetag, "score": score, "level": level, "timestamp": timestamp})
+        scores.sort(key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0, reverse=True)
+        try:
+            with open(HIGH_SCORES_FILE, 'w') as f:
+                json.dump(scores[:100], f, indent=2)
+        except:
+            pass
+        return
     try:
-        with open(HIGH_SCORES_FILE, 'w') as f:
-            json.dump(scores, f, indent=2)
+        sheet.append_row([spacetag, score, level, timestamp], value_input_option="USER_ENTERED")
     except:
         pass
 # Cleaned up obsoleted query_params polling
