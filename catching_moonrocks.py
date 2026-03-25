@@ -418,33 +418,99 @@ elif st.session_state.game_state == 'level_start':
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown("""
-            <div style="background: rgba(0,0,0,0.85); padding: 40px; border-radius: 20px; 
-                        text-align: center; backdrop-filter: blur(10px); border: 2px solid rgba(99, 102, 241, 0.5);">
+        sector_name = SECTOR_NAMES.get(st.session_state.level, "Unknown Sector").upper()
+        rocks_count = 5 + st.session_state.level
+        
+        st.markdown(f"""
+            <style>
+            .sci-fi-hud {{
+                background: rgba(10, 16, 40, 0.7);
+                backdrop-filter: blur(15px);
+                border: 2px solid #00f3ff;
+                box-shadow: 0 0 20px rgba(0, 243, 255, 0.5), inset 0 0 30px rgba(0, 243, 255, 0.2);
+                padding: 40px;
+                border-radius: 15px;
+                color: #e0f7fa;
+                font-family: 'Orbitron', sans-serif;
+                margin-top: 50px;
+                margin-bottom: 20px;
+                clip-path: polygon(5% 0, 95% 0, 100% 5%, 100% 95%, 95% 100%, 5% 100%, 0 95%, 0 5%);
+            }}
+            .hud-header {{
+                text-align: center;
+                color: #d8b4fe;
+                font-size: 2.2rem;
+                font-weight: 700;
+                text-shadow: 0 0 10px #d8b4fe, 0 0 20px #8b5cf6;
+                margin-bottom: 30px;
+                letter-spacing: 2px;
+                border-bottom: 1px solid rgba(0,243,255,0.3);
+                padding-bottom: 15px;
+            }}
+            .hud-list {{
+                list-style-type: none;
+                padding-left: 10px;
+                font-size: 1.3rem;
+                line-height: 2.4;
+                margin-bottom: 20px;
+            }}
+            .hud-list li::before {{
+                content: '• ';
+                color: #00f3ff;
+                font-weight: bold;
+                margin-right: 15px;
+            }}
+            .hud-highlight {{
+                color: #00f3ff;
+                font-weight: 600;
+                text-shadow: 0 0 5px rgba(0,243,255,0.5);
+            }}
+            
+            /* Restyle the Streamlit button */
+            div[data-testid="stButton"] button {{
+                background: linear-gradient(135deg, rgba(0,180,216,0.2) 0%, rgba(0,119,182,0.8) 100%) !important;
+                border: 2px solid #00f3ff !important;
+                color: #ffffff !important;
+                font-family: 'Orbitron', sans-serif !important;
+                font-size: 1.5rem !important;
+                font-weight: 700 !important;
+                padding: 15px 30px !important;
+                box-shadow: 0 0 15px rgba(0,243,255,0.6), inset 0 0 10px rgba(0,243,255,0.4) !important;
+                text-shadow: 0 0 8px rgba(255,255,255,0.8) !important;
+                transition: all 0.3s ease !important;
+                clip-path: polygon(3% 0, 97% 0, 100% 15%, 100% 85%, 97% 100%, 3% 100%, 0 85%, 0 15%) !important;
+                border-radius: 0px !important;
+            }}
+            div[data-testid="stButton"] button:hover {{
+                background: linear-gradient(135deg, rgba(0,180,216,0.6) 0%, rgba(0,119,182,1) 100%) !important;
+                box-shadow: 0 0 25px rgba(0,243,255,1), inset 0 0 15px rgba(0,243,255,0.8) !important;
+                transform: scale(1.02) !important;
+                color: #ffffff !important;
+            }}
+            div[data-testid="stButton"] button p {{
+                font-size: 1.5rem !important;
+                font-weight: 700 !important;
+            }}
+            </style>
+            
+            <div class="sci-fi-hud">
+                <div class="hud-header">SECTOR: {sector_name} - MISSION START</div>
+                <ul class="hud-list">
+                    <li>Mission Briefing:</li>
+                    <li>☑&nbsp; <span class="hud-highlight">Moonrocks to Collect:</span> {rocks_count}</li>
+                    <li>⏱&nbsp; <span class="hud-highlight">Time Limit:</span> 30s</li>
+                    <li>🎯&nbsp; <span class="hud-highlight">Bonus Objective:</span> Build combos for bonus points</li>
+                    <li>⚠&nbsp; <span class="hud-highlight">Hazard Warning:</span> Zero-Gravity Drifting Objects</li>
+                </ul>
+            </div>
         """, unsafe_allow_html=True)
         
-        st.markdown(f"<h1 style='color: #6366f1; font-size: 3rem;'>Level {st.session_state.level}</h1>", unsafe_allow_html=True)
-        sector_name = SECTOR_NAMES.get(st.session_state.level, "Unknown Sector")
-        st.markdown(f"<h2 style='color: #cbd5e1; font-size: 2rem;'>Sector: {sector_name}</h2>", unsafe_allow_html=True)
-        
         st.write("")
-        st.markdown(f"<p style='font-size: 1.2rem;'><strong>Current Score:</strong> {st.session_state.score}</p>", unsafe_allow_html=True)
-        st.markdown(f"<p style='font-size: 1.2rem;'><strong>Pilot:</strong> {st.session_state.spacetag or 'Anonymous'}</p>", unsafe_allow_html=True)
-        st.write("")
-        
-        rocks_count = 5 + st.session_state.level
-        st.info(f"💎 Collect {rocks_count} moonrocks in 30 seconds!")
-        st.success("⚡ Build combos by collecting rocks quickly!")
-        
-        st.write("")
-        # Show "RESUME" if coming from pause, otherwise "BEGIN"
-        button_text = "▶️ RESUME MISSION" if st.session_state.is_resuming else "▶️ BEGIN MISSION"
+        button_text = "▶ RESUME MISSION" if st.session_state.is_resuming else "▶ BEGIN MISSION"
         if st.button(button_text, type="primary", use_container_width=True):
             st.session_state.is_resuming = False  # Reset flag
             st.session_state.game_state = 'playing'
             st.rerun()
-        
-        st.markdown("</div>", unsafe_allow_html=True)
 
 # ==================== PLAYING STATE ====================
 elif st.session_state.game_state == 'playing':
