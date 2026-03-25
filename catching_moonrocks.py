@@ -835,14 +835,24 @@ elif st.session_state.game_state == 'playing':
                         camera.stop();
                         video.srcObject.getTracks().forEach(track => track.stop());
                         
-                        // AUTO ADVANCE after 2 seconds
+                        // AUTO ADVANCE with 10s countdown
                         if (!autoAdvanceTriggered) {{
                             autoAdvanceTriggered = true;
-                            setTimeout(() => {{
-                                // Store result in localStorage for polling script
-                                localStorage.setItem('lunar_loot_result', 'complete');
-                                localStorage.setItem('lunar_loot_rocks', '0');
-                            }}, 2000);
+                            let countdown = 10;
+                            const countInterval = setInterval(() => {{
+                                // Clear previous text area
+                                ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                                ctx.fillRect(canvas.width/2 - 175, canvas.height/2 + 80, 350, 50);
+                                ctx.fillStyle = '#22C55E';
+                                ctx.font = 'bold 24px Orbitron';
+                                ctx.fillText(`Advancing in ${{countdown}}s...`, canvas.width/2 - 120, canvas.height/2 + 115);
+                                
+                                if (countdown <= 0) {{
+                                    clearInterval(countInterval);
+                                    window.parent.postMessage({{result: 'complete', rocks: '0'}}, '*');
+                                }}
+                                countdown--;
+                            }}, 1000);
                         }}
                     }} else if (remaining <= 0 && !gameOver && !levelComplete) {{
                         gameOver = true;
@@ -879,14 +889,24 @@ elif st.session_state.game_state == 'playing':
                         camera.stop();
                         video.srcObject.getTracks().forEach(track => track.stop());
                         
-                        // AUTO ADVANCE after 2 seconds
+                        // AUTO ADVANCE with 10s countdown
                         if (!autoAdvanceTriggered) {{
                             autoAdvanceTriggered = true;
-                            setTimeout(() => {{
-                                // Store result in localStorage for polling script
-                                localStorage.setItem('lunar_loot_result', 'failed');
-                                localStorage.setItem('lunar_loot_rocks', rocksLeft.toString());
-                            }}, 2000);
+                            let countdown = 10;
+                            const countInterval = setInterval(() => {{
+                                // Clear previous text area
+                                ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                                ctx.fillRect(canvas.width/2 - 175, canvas.height/2 + 120, 350, 50);
+                                ctx.fillStyle = '#EF4444';
+                                ctx.font = 'bold 24px Orbitron';
+                                ctx.fillText(`Advancing in ${{countdown}}s...`, canvas.width/2 - 120, canvas.height/2 + 155);
+                                
+                                if (countdown <= 0) {{
+                                    clearInterval(countInterval);
+                                    window.parent.postMessage({{result: 'failed', rocks: rocksLeft.toString()}}, '*');
+                                }}
+                                countdown--;
+                            }}, 1000);
                         }}
                     }}
                 }});
@@ -910,32 +930,13 @@ elif st.session_state.game_state == 'playing':
     components.html(game_html, height=600, scrolling=False)
     
     st.write("")
-    st.success("🎮 Click CONTINUE when level ends!")
+    st.info("⏱️ Level will automatically advance 10 seconds after completion.")
     
     # Pause button
     if st.button("⏸️ PAUSE GAME", use_container_width=True, key="pause_btn"):
         st.session_state.is_resuming = True
         st.session_state.game_state = 'level_start'
         st.rerun()
-    
-    st.write("")
-    
-    # Continue button - checks localStorage and advances
-    if st.button("▶️ CONTINUE", type="primary", use_container_width=True, key="continue_btn"):
-        # Check localStorage via a hidden component
-        check_html = """
-            <script>
-            const result = localStorage.getItem('lunar_loot_result');
-            const rocks = localStorage.getItem('lunar_loot_rocks');
-            if (result) {
-                localStorage.removeItem('lunar_loot_result');
-                localStorage.removeItem('lunar_loot_rocks');
-                // Send to parent
-                window.parent.postMessage({result: result, rocks: rocks || '0'}, '*');
-            }
-            </script>
-        """
-        components.html(check_html, height=0)
 
 # ==================== LEVEL COMPLETE SCREEN ====================
 elif st.session_state.game_state == 'level_complete':
