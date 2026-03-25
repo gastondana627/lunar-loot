@@ -86,8 +86,40 @@ def load_moonrock_image():
             pass
     return None
 
-# listener_html removed as it is incompatible with Streamlit cross-iframe CORS
+import json
+import datetime
 
+HIGH_SCORES_FILE = os.path.join(GAME_ROOT_DIR, "high_scores.json")
+
+def load_high_scores() -> list:
+    if not os.path.exists(HIGH_SCORES_FILE):
+        return []
+    try:
+        with open(HIGH_SCORES_FILE, 'r') as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return data
+    except:
+        pass
+    return []
+
+def save_high_score(spacetag, score, level):
+    if not spacetag or score <= 0:
+        return
+    scores = load_high_scores()
+    scores.append({
+        "spacetag": spacetag,
+        "score": score,
+        "level": level,
+        "timestamp": datetime.datetime.now().isoformat()
+    })
+    scores.sort(key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0, reverse=True)
+    scores = scores[:100] # type: ignore
+    try:
+        with open(HIGH_SCORES_FILE, 'w') as f:
+            json.dump(scores, f, indent=2)
+    except:
+        pass
 # Cleaned up obsoleted query_params polling
 
 # Session state
@@ -182,6 +214,12 @@ if st.session_state.game_state == 'intro':
         
         if st.button("▶ BEGIN GAME", type="primary", use_container_width=True, key="begin_game"):
             st.session_state.game_state = 'title'
+            st.rerun()
+            
+        st.write("")
+        
+        if st.button("🏆 HALL OF FAME", type="primary", use_container_width=True, key="leaderboard_btn"):
+            st.session_state.game_state = 'leaderboard'
             st.rerun()
         
         st.write("")
@@ -957,11 +995,13 @@ elif st.session_state.game_state == 'playing':
             st.session_state.score += 100
             st.session_state.level += 1
             if st.session_state.level > MAX_LEVELS:
+                save_high_score(st.session_state.spacetag, st.session_state.score, st.session_state.level)
                 st.session_state.game_state = 'game_complete'
             else:
                 st.session_state.game_state = 'level_complete'
             st.rerun()
         elif res == "failed":
+            save_high_score(st.session_state.spacetag, st.session_state.score, st.session_state.level)
             try:
                 st.session_state.rocks_remaining = int(component_value.get("rocks", 0))
             except:
@@ -1213,3 +1253,235 @@ elif st.session_state.game_state == 'game_complete':
                 st.session_state.level = 1
                 st.session_state.game_state = 'title'
                 st.rerun()
+
+# ==================== HALL OF FAME SCREEN ====================
+elif st.session_state.game_state == 'leaderboard':
+    main_bg = load_main_menu_bg()
+    if main_bg:
+        st.markdown(f"""
+            <style>
+            .stApp {{
+                background-image: url(data:image/png;base64,{main_bg});
+                background-size: cover;
+                background-position: center;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("""
+        <style>
+        /* Neon Grid & Typography */
+        .hof-title {
+            text-align: center;
+            font-size: 4rem;
+            font-weight: 900;
+            color: #e0f7fa;
+            text-shadow: 0 0 10px #00f3ff, 0 0 20px #8b5cf6, 0 0 40px #8b5cf6;
+            margin-bottom: 5px;
+            letter-spacing: 4px;
+        }
+        .hof-subtitle {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #94a3b8;
+            letter-spacing: 2px;
+            margin-bottom: 50px;
+        }
+        
+        /* Podium Cards */
+        .podium-card {
+            background: rgba(10, 16, 40, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            margin-bottom: 20px;
+            color: white;
+            transition: transform 0.3s ease;
+        }
+        .podium-card:hover {
+            transform: scale(1.02);
+        }
+        
+        /* Gold (1st) */
+        .card-gold {
+            border: 2px solid #fbbf24;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.4), inset 0 0 20px rgba(251, 191, 36, 0.1);
+            transform: scale(1.05);
+            z-index: 10;
+        }
+        .card-gold h2 { color: #fbbf24; text-shadow: 0 0 10px #fbbf24; }
+        
+        /* Silver (2nd) */
+        .card-silver {
+            border: 2px solid #e2e8f0;
+            box-shadow: 0 0 15px rgba(226, 232, 240, 0.3), inset 0 0 15px rgba(226, 232, 240, 0.1);
+        }
+        .card-silver h2 { color: #e2e8f0; text-shadow: 0 0 10px #e2e8f0; }
+        
+        /* Bronze (3rd) */
+        .card-bronze {
+            border: 2px solid #b45309;
+            box-shadow: 0 0 15px rgba(180, 83, 9, 0.4), inset 0 0 15px rgba(180, 83, 9, 0.1);
+        }
+        .card-bronze h2 { color: #b45309; text-shadow: 0 0 10px #b45309; }
+        
+        /* Ranks List Table */
+        .rank-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 10px;
+            margin-top: 40px;
+        }
+        .rank-table th {
+            color: #64748b;
+            text-align: left;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.3);
+        }
+        .rank-table td {
+            background: rgba(10, 16, 40, 0.6);
+            backdrop-filter: blur(5px);
+            padding: 15px 20px;
+            color: #cbd5e1;
+            font-size: 1.1rem;
+        }
+        .rank-table tr td:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; border-left: 2px solid transparent;}
+        .rank-table tr td:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; border-right: 2px solid transparent;}
+        
+        .rank-table tr:hover td {
+            background: rgba(99, 102, 241, 0.15);
+        }
+        
+        /* Glow for specifically the user's row if needed, or alternating borders */
+        .row-accent td {
+            border-top: 1px solid #00f3ff;
+            border-bottom: 1px solid #00f3ff;
+            background: rgba(0, 243, 255, 0.15);
+        }
+        .row-accent td:first-child { border-left: 1px solid #00f3ff; }
+        .row-accent td:last-child { border-right: 1px solid #00f3ff; }
+        
+        .rank-num { color: #94a3b8; font-weight: bold; }
+        .score-val { color: #00f3ff; font-weight: bold; font-family: monospace; font-size: 1.3rem !important;}
+        .level-badge {
+            background: rgba(255,255,255,0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        
+        /* Stats block in cards */
+        .stat-block {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 15px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('<div class="hof-title">HALL OF FAME</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hof-subtitle">GLOBAL TACTICAL RANKINGS AND PILOT EXCELLENCE</div>', unsafe_allow_html=True)
+    
+    col_back, col_b2, col_b3 = st.columns([1, 4, 1])
+    with col_back:
+        if st.button("◀ BACK", use_container_width=True):
+            st.session_state.game_state = 'intro'
+            st.rerun()
+        
+    st.write("")
+    
+    scores = load_high_scores()
+    
+    if not scores:
+        st.info("No flight records found. Be the first to enter the Hall of Fame!")
+    else:
+        # Podium
+        col1, col2, col3 = st.columns([1, 1.1, 1])
+        
+        # Rank 2 (Silver)
+        if len(scores) >= 2:
+            with col1:
+                st.markdown(f"""
+                <div class="podium-card card-silver">
+                    <h1 style="margin:0; font-size: 3rem;">🥈</h1>
+                    <h2>{scores[1].get('spacetag', 'UNKNOWN')}</h2>
+                    <p style="color: #94a3b8; font-size: 0.9rem;">SILVER BADGE</p>
+                    <div class="stat-block">
+                        <div><div style="font-size: 0.8rem; color: #64748b;">SCORE</div><div style="color: #00f3ff; font-weight: bold;">{scores[1].get('score')}</div></div>
+                        <div><div style="font-size: 0.8rem; color: #64748b;">LEVEL</div><div style="color: white; font-weight: bold;">LVL {scores[1].get('level')}</div></div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Rank 1 (Gold)
+        if len(scores) >= 1:
+            with col2:
+                st.markdown(f"""
+                <div class="podium-card card-gold">
+                    <h1 style="margin:0; font-size: 4rem;">🏆</h1>
+                    <h2 style="font-size: 2rem;">{scores[0].get('spacetag', 'UNKNOWN')}</h2>
+                    <p style="color: #fbbf24; font-size: 1rem; font-weight: bold;">CHAMPION'S GOLD</p>
+                    <div class="stat-block">
+                        <div><div style="font-size: 0.8rem; color: #fbbf24;">HIGH SCORE</div><div style="color: #00f3ff; font-size: 1.5rem; font-weight: bold;">{scores[0].get('score')}</div></div>
+                        <div><div style="font-size: 0.8rem; color: #fbbf24;">LEVEL</div><div style="color: white; font-size: 1.5rem; font-weight: bold;">LVL {scores[0].get('level')}</div></div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+        # Rank 3 (Bronze)
+        if len(scores) >= 3:
+            with col3:
+                st.markdown(f"""
+                <div class="podium-card card-bronze">
+                    <h1 style="margin:0; font-size: 3rem;">🥉</h1>
+                    <h2>{scores[2].get('spacetag', 'UNKNOWN')}</h2>
+                    <p style="color: #94a3b8; font-size: 0.9rem;">BRONZE BADGE</p>
+                    <div class="stat-block">
+                        <div><div style="font-size: 0.8rem; color: #64748b;">SCORE</div><div style="color: #00f3ff; font-weight: bold;">{scores[2].get('score')}</div></div>
+                        <div><div style="font-size: 0.8rem; color: #64748b;">LEVEL</div><div style="color: white; font-weight: bold;">LVL {scores[2].get('level')}</div></div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Rankings Table (4 through 10)
+        table_html = """
+        <table class="rank-table" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>RANK</th>
+                    <th>PILOT SPACETAG</th>
+                    <th>HIGH SCORE</th>
+                    <th>LEVEL ACHIEVED</th>
+                    <th>DATE RECORDED</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        for i, s in enumerate(scores[3:10]): # type: ignore
+            rank = i + 4
+            row_class = "row-accent" if s.get('spacetag') == st.session_state.spacetag else ""
+            date_str = "UNKNOWN"
+            if 'timestamp' in s:
+                try:
+                    date_str = s['timestamp'][:10] # YYYY-MM-DD
+                except: pass
+                
+            table_html += f"""
+            <tr class="{row_class}">
+                <td class="rank-num">#{rank:02d}</td>
+                <td style="font-weight: bold;">{s.get('spacetag', 'UNKNOWN')}</td>
+                <td class="score-val">{s.get('score', 0):,}</td>
+                <td><span class="level-badge">LVL {s.get('level', 1)}</span></td>
+                <td style="color: #64748b; font-size: 0.9rem;">{date_str}</td>
+            </tr>
+            """
+        
+        table_html += "</tbody></table>"
+        if len(scores) > 3:
+            st.markdown(table_html, unsafe_allow_html=True)
