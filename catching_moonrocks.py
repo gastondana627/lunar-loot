@@ -88,34 +88,7 @@ def load_moonrock_image():
 
 # listener_html removed as it is incompatible with Streamlit cross-iframe CORS
 
-# Check query params for result
-if 'result' in st.query_params:
-    result = st.query_params.get('result')
-    rocks = st.query_params.get('rocks', '0')
-    st.query_params.clear()
-    
-    if result == 'complete':
-        st.session_state.score += 100
-        st.session_state.level += 1
-        if st.session_state.level > MAX_LEVELS:
-            st.session_state.game_state = 'game_complete'
-        else:
-            st.session_state.game_state = 'level_complete'
-        st.rerun()
-    elif result == 'failed':
-        try:
-            st.session_state.rocks_remaining = int(rocks)
-        except:
-            st.session_state.rocks_remaining = 0
-        st.session_state.game_state = 'level_failed'
-        st.rerun()
-
-# Check for level advance
-if 'advance' in st.query_params:
-    st.query_params.clear()
-    if st.session_state.game_state == 'level_complete':
-        st.session_state.game_state = 'level_start'
-        st.rerun()
+# Cleaned up obsoleted query_params polling
 
 # Session state
 if 'game_state' not in st.session_state:
@@ -527,6 +500,25 @@ elif st.session_state.game_state == 'playing':
             </div>
             
             <script>
+                // --- STREAMLIT CUSTOM COMPONENT HANDSHAKE ---
+                function sendToStreamlit(type, data) {{
+                    var outData = Object.assign({{
+                        isStreamlitMessage: true,
+                        type: type,
+                    }}, data);
+                    window.parent.postMessage(outData, "*");
+                }}
+                
+                // Initialize component so Streamlit opens the iframe
+                sendToStreamlit("streamlit:componentReady", {{apiVersion: 1}});
+                sendToStreamlit("streamlit:setFrameHeight", {{height: 650}});
+                
+                // Helper to return values to Python backend
+                function returnToPython(val) {{
+                    sendToStreamlit("streamlit:setComponentValue", {{value: val}});
+                }}
+                // ---------------------------------------------
+                
                 const video = document.getElementById('video');
                 const canvas = document.getElementById('gameCanvas');
                 const ctx = canvas.getContext('2d');
@@ -883,12 +875,7 @@ elif st.session_state.game_state == 'playing':
                                 
                                 if (countdown <= 0) {{
                                     clearInterval(countInterval);
-                                    let pUrlStr = document.referrer;
-                                    if (!pUrlStr) pUrlStr = "https://lunar-loot.streamlit.app/";
-                                    const pUrl = new URL(pUrlStr);
-                                    pUrl.searchParams.set('result', 'complete');
-                                    pUrl.searchParams.set('rocks', '0');
-                                    window.parent.location.href = pUrl.toString();
+                                    returnToPython({{result: 'complete', rocks: '0'}});
                                 }}
                                 countdown--;
                             }}, 1000);
@@ -942,12 +929,7 @@ elif st.session_state.game_state == 'playing':
                                 
                                 if (countdown <= 0) {{
                                     clearInterval(countInterval);
-                                    let pUrlStr = document.referrer;
-                                    if (!pUrlStr) pUrlStr = "https://lunar-loot.streamlit.app/";
-                                    const pUrl = new URL(pUrlStr);
-                                    pUrl.searchParams.set('result', 'failed');
-                                    pUrl.searchParams.set('rocks', rocksLeft.toString());
-                                    window.parent.location.href = pUrl.toString();
+                                    returnToPython({{result: 'failed', rocks: rocksLeft.toString()}});
                                 }}
                                 countdown--;
                             }}, 1000);
@@ -970,8 +952,35 @@ elif st.session_state.game_state == 'playing':
         </html>
     """
     
-    # Full width game (score is now inside the canvas on the right)
-    components.html(game_html, height=600, scrolling=False)
+    # === NATIVE COMPONENT INJECTION ===
+    import os
+    os.makedirs("component_dist", exist_ok=True)
+    with open("component_dist/index.html", "w", encoding="utf-8") as f:
+        f.write(game_html)
+        
+    game_comp = components.declare_component("lunar_loot_game", path="component_dist")
+    
+    # Render component and capture the returned dictionary when Javascript fires returnToPython()
+    component_value = game_comp(key=f"game_canvas_lvl_{st.session_state.level}")
+    
+    if component_value:
+        res = component_value.get("result")
+        if res == "complete":
+            st.session_state.score += 100
+            st.session_state.level += 1
+            if st.session_state.level > MAX_LEVELS:
+                st.session_state.game_state = 'game_complete'
+            else:
+                st.session_state.game_state = 'level_complete'
+            st.rerun()
+        elif res == "failed":
+            try:
+                st.session_state.rocks_remaining = int(component_value.get("rocks", 0))
+            except:
+                st.session_state.rocks_remaining = 0
+            st.session_state.game_state = 'level_failed'
+            st.rerun()
+    # =======================================
     
     st.write("")
     st.info("⏱️ Level will automatically advance 10 seconds after completion.")
@@ -1026,29 +1035,10 @@ elif st.session_state.game_state == 'level_complete':
             </div>
         """, unsafe_allow_html=True)
     
-    # Auto-advance using meta refresh (most reliable method)
-    st.markdown("""
-        <meta http-equiv="refresh" content="3">
-        <script>
-        // After 3 seconds, set flag and reload
-        setTimeout(() => {
-            localStorage.setItem('advance_to_next_level', 'true');
-        }, 2900);
-        </script>
-    """, unsafe_allow_html=True)
-    
-    # Check if we should advance
-    advance_check = """
-        <script>
-        if (localStorage.getItem('advance_to_next_level') === 'true') {
-            localStorage.removeItem('advance_to_next_level');
-            const url = new URL(window.location);
-            url.searchParams.set('advance', 'next');
-            window.location.href = url.toString();
-        }
-        </script>
-    """
-    components.html(advance_check, height=0)
+    import time
+    time.sleep(3)
+    st.session_state.game_state = 'level_start'
+    st.rerun()
 
 # ==================== LEVEL FAILED SCREEN ====================
 elif st.session_state.game_state == 'level_failed':
