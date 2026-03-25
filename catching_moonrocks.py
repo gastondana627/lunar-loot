@@ -124,8 +124,28 @@ st.markdown("""
         0%, 100% { opacity: 1; transform: scale(1); }
         50% { opacity: 0.8; transform: scale(1.05); }
     }
+    /* Hide Native Audio Player */
+    [data-testid="stAudio"] {
+        display: none !important;
+    }
+    .music-btn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+    }
     </style>
 """, unsafe_allow_html=True)
+
+# Global Music Player Logic
+if 'music_playing' not in st.session_state:
+    st.session_state.music_playing = False
+
+def render_global_music():
+    if st.session_state.music_playing:
+        st.audio("https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/menu_theme.wav", format="audio/wav", autoplay=True, loop=True)
+
+render_global_music()
 
 # ==================== INTRO SCREEN ====================
 if st.session_state.game_state == 'intro':
@@ -257,47 +277,15 @@ elif st.session_state.game_state == 'title':
             </style>
         """, unsafe_allow_html=True)
     
+    # Title Screen Layout
     # Music toggle in top right
-    if 'music_playing' not in st.session_state:
-        st.session_state.music_playing = False
-    
-    # Background music player
-    music_html = f"""
-        <div style="position: fixed; top: 20px; right: 80px; z-index: 9999;">
-            <button onclick="toggleMusic()" style="background: rgba(10, 14, 39, 0.9); border: 2px solid #6366f1; 
-                    border-radius: 50%; width: 50px; height: 50px; cursor: pointer; font-size: 24px;">
-                <span id="musicIcon">🔊</span>
-            </button>
-        </div>
-        <audio id="bgMusic" loop>
-            <source src="https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/menu_theme.wav" type="audio/wav">
-        </audio>
-        <script>
-            const music = document.getElementById('bgMusic');
-            const icon = document.getElementById('musicIcon');
-            let isPlaying = false;
-            
-            function toggleMusic() {{
-                if (isPlaying) {{
-                    music.pause();
-                    icon.textContent = '🔇';
-                    isPlaying = false;
-                }} else {{
-                    music.play().catch(e => console.log('Audio play failed:', e));
-                    icon.textContent = '🔊';
-                    isPlaying = true;
-                }}
-            }}
-            
-            // Auto-play on first interaction
-            document.addEventListener('click', () => {{
-                if (!isPlaying) {{
-                    toggleMusic();
-                }}
-            }}, {{ once: true }});
-        </script>
-    """
-    st.markdown(music_html, unsafe_allow_html=True)
+    col_empty, col_music = st.columns([9, 1])
+    with col_music:
+        st.write("")
+        st.write("")
+        if st.button("🔊" if st.session_state.music_playing else "🔇", key="toggle_music_btn", help="Toggle Background Music"):
+            st.session_state.music_playing = not st.session_state.music_playing
+            st.rerun()
     
     # Centered content
     col1, col2, col3 = st.columns([1, 2, 1])
