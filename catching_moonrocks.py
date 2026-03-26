@@ -468,9 +468,7 @@ def add_music_player():
         </script>
     </div>
     """
-    components.html(player_html, height=120)
-
-add_music_player()
+    components.html(player_html, height=160)
 
 # ==================== INTRO SCREEN ====================
 if st.session_state.game_state == 'intro':
@@ -609,15 +607,6 @@ elif st.session_state.game_state == 'title':
         """, unsafe_allow_html=True)
     
     # Title Screen Layout
-    # Music toggle in top right
-    col_empty, col_music = st.columns([9, 1])
-    with col_music:
-        st.write("")
-        st.write("")
-        if st.button("🔊" if st.session_state.music_playing else "🔇", key="toggle_music_btn", help="Toggle Background Music"):
-            st.session_state.music_playing = not st.session_state.music_playing
-            st.rerun()
-    
     # Centered content
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -2030,3 +2019,6 @@ elif st.session_state.game_state == 'leaderboard':
         
         if len(scores) > 3:
             st.markdown(table_header + table_rows + table_footer, unsafe_allow_html=True)
+
+# Persistent Music Player Footer
+add_music_player()
