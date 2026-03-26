@@ -251,15 +251,226 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Global Music Player Logic
-if 'music_playing' not in st.session_state:
-    st.session_state.music_playing = False
+# --- PERSISTENT ROTATING MUSIC PLAYER ---
+def add_music_player():
+    playlist = [
+        {"title": "LUNAR MENU THEME", "url": "https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/menu_theme.wav"},
+        {"title": "3RD WORLD MARS", "url": "https://cdn1.suno.ai/58c5f1ef-851c-44d6-83c6-69b5aa2b8b6e.mp3"},
+        {"title": "PARALLEL FREQUENCIES", "url": "https://cdn1.suno.ai/fe89d5b0-1125-4b82-9b9e-408b11b3bb51.mp3"}
+    ]
+    
+    player_html = f"""
+    <div id="music-player-root" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10000; width: 340px;">
+        <div class="music-glass-panel">
+            <div class="music-info">
+                <div class="now-playing-label">NOW SCANNING FREQUENCES</div>
+                <div id="track-title" class="track-name">INITIALIZING COMMS...</div>
+            </div>
+            
+            <div class="visualizer-container">
+                <div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div>
+                <div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div>
+            </div>
 
-def render_global_music():
-    if st.session_state.music_playing:
-        st.audio("https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/menu_theme.wav", format="audio/wav", autoplay=True, loop=True)
+            <div class="music-controls">
+                <button id="prev-btn" class="control-btn">⏮</button>
+                <button id="play-btn" class="control-btn play-main">▶</button>
+                <button id="next-btn" class="control-btn">⏭</button>
+                <div class="volume-container">
+                    <span style="font-size: 10px; margin-right: 5px;">🔊</span>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.5">
+                </div>
+            </div>
+        </div>
 
-render_global_music()
+        <style>
+        .music-glass-panel {{
+            background: rgba(10, 16, 40, 0.85);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-radius: 12px;
+            padding: 12px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(0, 243, 255, 0.1);
+            font-family: 'Orbitron', sans-serif;
+            color: white;
+        }}
+        .music-info {{
+            text-align: center;
+        }}
+        .now-playing-label {{
+            font-size: 8px;
+            color: #94a3b8;
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+        }}
+        .track-name {{
+            font-size: 11px;
+            font-weight: 900;
+            color: #00f3ff;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+        .music-controls {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }}
+        .control-btn {{
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+            padding: 0;
+            display: flex;
+            align-items: center;
+        }}
+        .control-btn:hover {{
+            color: #00f3ff;
+            transform: scale(1.2);
+        }}
+        .play-main {{
+            font-size: 22px;
+            color: #FFFFFF;
+        }}
+        .volume-container {{
+            display: flex;
+            align-items: center;
+            margin-left: 10px;
+        }}
+        #volume-slider {{
+            width: 60px;
+            cursor: pointer;
+            accent-color: #00f3ff;
+        }}
+        /* Visualizer Animation */
+        .visualizer-container {{
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 3px;
+            height: 15px;
+            margin: 2px 0;
+        }}
+        .viz-bar {{
+            width: 3px;
+            height: 100%;
+            background: #a855f7;
+            border-radius: 1px;
+        }}
+        .playing .viz-bar {{
+            animation: bounce 0.8s ease-in-out infinite alternate;
+        }}
+        .playing .viz-bar:nth-child(2) {{ animation-delay: 0.1s; height: 60%; background: #00f3ff; }}
+        .playing .viz-bar:nth-child(3) {{ animation-delay: 0.2s; height: 80%; }}
+        .playing .viz-bar:nth-child(4) {{ animation-delay: 0.3s; height: 50%; background: #00f3ff; }}
+        .playing .viz-bar:nth-child(5) {{ animation-delay: 0.4s; height: 90%; }}
+        .playing .viz-bar:nth-child(6) {{ animation-delay: 0.5s; height: 40%; background: #00f3ff; }}
+        
+        @keyframes bounce {{
+            0% {{ height: 20%; }}
+            100% {{ height: 100%; }}
+        }}
+        </style>
+
+        <script>
+        (function() {{
+            const playlist = {playlist};
+            let currentIndex = parseInt(localStorage.getItem('lunar_loot_track_index')) || 0;
+            let audio = window.lunarAudioPlayer;
+
+            if (!audio) {{
+                audio = new Audio();
+                window.lunarAudioPlayer = audio;
+            }}
+
+            const titleEl = document.getElementById('track-title');
+            const playBtn = document.getElementById('play-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const prevBtn = document.getElementById('prev-btn');
+            const volSlider = document.getElementById('volume-slider');
+            const root = document.getElementById('music-player-root');
+
+            function updateUI() {{
+                const track = playlist[currentIndex];
+                titleEl.textContent = track.title;
+                playBtn.textContent = audio.paused ? '▶' : '⏸';
+                if (!audio.paused) root.classList.add('playing');
+                else root.classList.remove('playing');
+            }}
+
+            function loadTrack(index) {{
+                currentIndex = index;
+                const track = playlist[currentIndex];
+                audio.src = track.url;
+                audio.load();
+                localStorage.setItem('lunar_loot_track_index', index);
+                updateUI();
+            }}
+
+            // Event Listeners
+            playBtn.onclick = () => {{
+                if (audio.paused) {{
+                    audio.play().then(updateUI).catch(e => console.log('Audio error:', e));
+                }} else {{
+                    audio.pause();
+                    updateUI();
+                }}
+            }};
+
+            nextBtn.onclick = () => {{
+                loadTrack((currentIndex + 1) % playlist.length);
+                audio.play().then(updateUI);
+            }};
+
+            prevBtn.onclick = () => {{
+                loadTrack((currentIndex - 1 + playlist.length) % playlist.length);
+                audio.play().then(updateUI);
+            }};
+
+            volSlider.oninput = (e) => {{
+                audio.volume = e.target.value;
+                localStorage.setItem('lunar_loot_volume', e.target.value);
+            }};
+
+            audio.onended = () => {{
+                nextBtn.onclick();
+            }};
+
+            // Initialize
+            const savedVol = localStorage.getItem('lunar_loot_volume');
+            if (savedVol !== null) {{
+                audio.volume = parseFloat(savedVol);
+                volSlider.value = savedVol;
+            }} else {{
+                audio.volume = 0.5;
+            }}
+
+            if (!audio.src) {{
+                loadTrack(currentIndex);
+            }} else {{
+                updateUI();
+            }}
+
+            // Handle track sync if someone else changed it
+            setInterval(() => {{
+                if (titleEl.textContent !== playlist[currentIndex].title) updateUI();
+            }}, 1000);
+
+        }})();
+        </script>
+    </div>
+    """
+    components.html(player_html, height=120)
+
+add_music_player()
 
 # ==================== INTRO SCREEN ====================
 if st.session_state.game_state == 'intro':
@@ -1372,7 +1583,7 @@ TACTICAL SCORE
 
 # ==================== LEVEL FAILED SCREEN ====================
 elif st.session_state.game_state == 'level_failed':
-    st.audio("https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/Space_mission_abort_unsuccessful2.wav", format="audio/wav", autoplay=True)
+    # Removed st.audio mission aborted sound to prioritize global music player
     bg_bytes = load_background(st.session_state.level)
     
     st.markdown(textwrap.dedent(f"""
@@ -1502,8 +1713,7 @@ if (snapshot) {
 # ==================== GAME COMPLETE SCREEN ====================
 elif st.session_state.game_state == 'game_complete':
     logo_bytes = load_logo()
-    # Play mission success fanfare
-    st.audio("https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/Space_mission_succes-2.wav", format="audio/wav", autoplay=True)
+    # Removed st.audio mission success fanfare to prioritize global music player
     
     # Clean screen - hide all previous content
     st.markdown("""
