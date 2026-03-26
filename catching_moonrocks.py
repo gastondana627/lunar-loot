@@ -1527,47 +1527,66 @@ elif st.session_state.game_state == 'leaderboard':
         .rank-table {
             width: 100%;
             border-collapse: separate;
-            border-spacing: 0 10px;
-            margin-top: 40px;
+            border-spacing: 0 12px;
+            margin-top: 30px;
         }
         .rank-table th {
-            color: #64748b;
+            color: #94a3b8;
             text-align: left;
             padding: 10px 20px;
-            font-size: 0.9rem;
-            letter-spacing: 2px;
-            border-bottom: 1px solid rgba(99, 102, 241, 0.3);
+            font-size: 0.85rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            font-weight: 700;
+            border-bottom: 2px solid rgba(0, 243, 255, 0.2);
         }
         .rank-table td {
-            background: rgba(10, 16, 40, 0.6);
-            backdrop-filter: blur(5px);
-            padding: 15px 20px;
-            color: #cbd5e1;
-            font-size: 1.1rem;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            padding: 18px 20px;
+            color: #e2e8f0;
+            font-size: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
-        .rank-table tr td:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; border-left: 2px solid transparent;}
-        .rank-table tr td:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; border-right: 2px solid transparent;}
+        .rank-table tr td:first-child { 
+            border-top-left-radius: 12px; 
+            border-bottom-left-radius: 12px; 
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .rank-table tr td:last-child { 
+            border-top-right-radius: 12px; 
+            border-bottom-right-radius: 12px; 
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
         
         .rank-table tr:hover td {
-            background: rgba(99, 102, 241, 0.15);
+            background: rgba(99, 102, 241, 0.2);
+            border-color: rgba(0, 243, 255, 0.4);
+            color: #fff;
         }
         
-        /* Glow for specifically the user's row if needed, or alternating borders */
+        /* Player Row Selection Glow */
         .row-accent td {
-            border-top: 1px solid #00f3ff;
-            border-bottom: 1px solid #00f3ff;
-            background: rgba(0, 243, 255, 0.15);
+            background: rgba(0, 243, 255, 0.1) !important;
+            border-top: 1px solid #00f3ff !important;
+            border-bottom: 1px solid #00f3ff !important;
+            box-shadow: inset 0 0 15px rgba(0, 243, 255, 0.1);
         }
-        .row-accent td:first-child { border-left: 1px solid #00f3ff; }
-        .row-accent td:last-child { border-right: 1px solid #00f3ff; }
+        .row-accent td:first-child { border-left: 2px solid #00f3ff !important; }
+        .row-accent td:last-child { border-right: 2px solid #00f3ff !important; }
         
-        .rank-num { color: #94a3b8; font-weight: bold; }
-        .score-val { color: #00f3ff; font-weight: bold; font-family: monospace; font-size: 1.3rem !important;}
+        .rank-num { color: #64748b; font-weight: 900; font-family: monospace; font-size: 1.2rem; }
+        .score-val { color: #00f3ff; font-weight: 900; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); }
         .level-badge {
-            background: rgba(255,255,255,0.1);
-            padding: 4px 10px;
+            background: rgba(0, 243, 255, 0.1);
+            color: #00f3ff;
+            padding: 4px 12px;
+            border: 1px solid rgba(0, 243, 255, 0.3);
             border-radius: 4px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1px;
         }
         
         /* Stats block in cards */
@@ -1646,38 +1665,43 @@ elif st.session_state.game_state == 'leaderboard':
                 """, unsafe_allow_html=True)
         
         # Rankings Table (4 through 10)
-        table_html = """
-        <table class="rank-table" style="width: 100%;">
-            <thead>
-                <tr>
-                    <th>RANK</th>
-                    <th>PILOT SPACETAG</th>
-                    <th>HIGH SCORE</th>
-                    <th>LEVEL ACHIEVED</th>
-                    <th>DATE RECORDED</th>
-                </tr>
-            </thead>
-            <tbody>
-        """
+        import textwrap
+        
+        table_header = textwrap.dedent("""
+            <table class="rank-table">
+                <thead>
+                    <tr>
+                        <th>RANK</th>
+                        <th>PILOT SPACETAG</th>
+                        <th>HIGH SCORE</th>
+                        <th>LEVEL ACHIEVED</th>
+                        <th>DATE RECORDED</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """)
+        
+        table_rows = ""
         for i, s in enumerate(scores[3:10]): # type: ignore
             rank = i + 4
-            row_class = "row-accent" if s.get('spacetag') == st.session_state.spacetag else ""
+            is_player = s.get('spacetag') == st.session_state.spacetag
+            row_class = "row-accent" if is_player else ""
             date_str = "UNKNOWN"
             if 'timestamp' in s:
                 try:
                     date_str = s['timestamp'][:10] # YYYY-MM-DD
                 except: pass
-                
-            table_html += f"""
-            <tr class="{row_class}">
-                <td class="rank-num">#{rank:02d}</td>
-                <td style="font-weight: bold;">{s.get('spacetag', 'UNKNOWN')}</td>
-                <td class="score-val">{s.get('score', 0):,}</td>
-                <td><span class="level-badge">LVL {s.get('level', 1)}</span></td>
-                <td style="color: #64748b; font-size: 0.9rem;">{date_str}</td>
-            </tr>
-            """
+            
+            # Manually building rows with zero leading whitespace to avoid markdown code block triggers
+            table_rows += f'<tr class="{row_class}">'
+            table_rows += f'<td class="rank-num">#{rank:02d}</td>'
+            table_rows += f'<td style="font-weight: 800; color: #f8fafc;">{s.get("spacetag", "UNKNOWN")}</td>'
+            table_rows += f'<td class="score-val">{s.get("score", 0):,}</td>'
+            table_rows += f'<td><span class="level-badge">LVL {s.get("level", 1)}</span></td>'
+            table_rows += f'<td style="color: #64748b; font-size: 0.9rem;">{date_str}</td>'
+            table_rows += '</tr>'
         
-        table_html += "</tbody></table>"
+        table_footer = "</tbody></table>"
+        
         if len(scores) > 3:
-            st.markdown(table_html, unsafe_allow_html=True)
+            st.markdown(table_header + table_rows + table_footer, unsafe_allow_html=True)
