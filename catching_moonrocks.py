@@ -1281,47 +1281,67 @@ elif st.session_state.game_state == 'playing':
 
 # ==================== LEVEL COMPLETE SCREEN ====================
 elif st.session_state.game_state == 'level_complete':
-    # Full screen with logo and "Level Complete" title - CLEAN
     logo_bytes = load_logo()
     
-    # Hide all previous content and show only this screen
-    st.markdown("""
+    st.markdown(textwrap.dedent("""
         <style>
         .stApp {
-            background: linear-gradient(135deg, #0a4d2e 0%, #1a5f3a 50%, #0a3d2e 100%) !important;
+            background: linear-gradient(135deg, #0a1028 0%, #1a1f3a 100%) !important;
         }
-        /* Hide any iframes or components from previous state */
         iframe, .stMarkdown iframe {
             display: none !important;
         }
-        /* Ensure clean screen */
-        .stApp > div:first-child {
-            overflow: hidden !important;
+        .results-card {
+            background: rgba(10, 16, 40, 0.9);
+            backdrop-filter: blur(15px);
+            border: 2px solid #00f3ff;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
+            text-align: center;
+            margin: 20px 0;
+        }
+        .orbitron-title {
+            font-family: 'Orbitron', sans-serif;
+            color: #00f3ff;
+            text-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+            font-weight: 900;
         }
         </style>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
     
-    # Centered content
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if logo_bytes:
-            st.markdown(f"""
-                <div style="text-align: center; margin: 40px 0;">
-                    <img src="data:image/png;base64,{logo_bytes}" 
-                         style="max-width: 400px; width: 70%; animation: pulse 2s ease-in-out infinite;">
+            st.markdown(textwrap.dedent(f"""
+                <div style="text-align: center; margin: 20px 0;">
+                    <img src="data:image/png;base64,{logo_bytes}" style="max-width: 320px;">
                 </div>
-            """, unsafe_allow_html=True)
+            """), unsafe_allow_html=True)
         
-        st.markdown(f"""
-            <div style="text-align: center; margin: 30px 0;">
-                <h1 style='color: #22c55e; font-size: 4rem; text-shadow: 0 0 20px rgba(34, 197, 94, 0.5); margin: 0;'>
-                    ★ Level {st.session_state.level - 1}<br>Complete!
+        st.markdown(textwrap.dedent(f"""
+            <div class="results-card">
+                <h1 class="orbitron-title" style="font-size: 2.5rem; margin-bottom: 10px;">
+                    MISSION ACCOMPLISHED
                 </h1>
-                <p style='color: #f8fafc; font-size: 2rem; margin: 20px 0;'>
-                    <strong>Score: {st.session_state.score}</strong>
+                <p style="color: #94a3b8; font-family: 'Orbitron'; font-size: 0.9rem; letter-spacing: 2px; margin-bottom: 30px;">
+                    SECTOR {st.session_state.level - 1} SECURED
                 </p>
+                
+                <p style="color: #cbd5e1; font-family: 'Orbitron'; font-size: 1.1rem; margin-bottom: 5px;">
+                    TACTICAL SCORE
+                </p>
+                <h2 style="color: #ffffff; font-family: 'Orbitron'; font-size: 4rem; font-weight: 900; margin: 0; text-shadow: 0 0 20px rgba(255,255,255,0.3);">
+                    {st.session_state.score}
+                </h2>
+                
+                <div style="margin-top: 30px; padding: 15px; background: rgba(0, 243, 255, 0.1); border-radius: 8px;">
+                    <p style="color: #22c55e; font-family: 'Orbitron'; font-size: 1rem; margin: 0;">
+                        ★ DATA PACKET UPLOADED ★
+                    </p>
+                </div>
             </div>
-        """, unsafe_allow_html=True)
+        """), unsafe_allow_html=True)
     
     import time
     time.sleep(3)
@@ -1329,103 +1349,113 @@ elif st.session_state.game_state == 'level_complete':
     st.rerun()
 
 # ==================== LEVEL FAILED SCREEN ====================
+# ==================== LEVEL FAILED SCREEN ====================
 elif st.session_state.game_state == 'level_failed':
-    # Play mission abort sound
     st.audio("https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/Space_mission_abort_unsuccessful2.wav", format="audio/wav", autoplay=True)
-    # Dark space background
     bg_bytes = load_background(st.session_state.level)
-    if bg_bytes:
-        st.markdown(f"""
-            <style>
-            .stApp {{
-                background-image: url(data:image/png;base64,{bg_bytes});
-                background-size: cover;
-                background-position: center;
-            }}
-            .stApp::before {{
-                content: '';
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(10, 14, 39, 0.85);
-                z-index: 0;
-            }}
-            /* Hide any iframes or components from previous state */
-            iframe, .stMarkdown iframe {{
-                display: none !important;
-            }}
-            /* Ensure clean screen */
-            .stApp > div:first-child {{
-                overflow: hidden !important;
-            }}
-            </style>
-        """, unsafe_allow_html=True)
     
-    col1, col2 = st.columns([1, 1])
+    st.markdown(textwrap.dedent(f"""
+        <style>
+        .stApp {{
+            background-image: url(data:image/png;base64,{bg_bytes if bg_bytes else ""});
+            background-size: cover;
+            background-position: center;
+        }}
+        .stApp::before {{
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 16, 40, 0.85);
+            z-index: 0;
+        }}
+        iframe, .stMarkdown iframe {{
+            display: none !important;
+        }}
+        .results-card {{
+            background: rgba(10, 16, 40, 0.95);
+            backdrop-filter: blur(15px);
+            border: 2px solid #ef4444;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.2);
+            position: relative;
+            z-index: 1;
+        }}
+        .orbitron-title {{
+            font-family: 'Orbitron', sans-serif;
+            color: #ef4444;
+            text-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+            font-weight: 900;
+        }}
+        .selfie-frame {{
+            border: 2px solid #ef4444;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            margin-bottom: 15px;
+        }}
+        </style>
+    """), unsafe_allow_html=True)
     
-    # Left: Game Over Stats
+    col1, col2 = st.columns([1, 1], gap="large")
+    
     with col1:
         rocks_left = st.session_state.rocks_remaining
         player_name = st.session_state.spacetag or "Anonymous"
         
-        st.markdown(f"""
-            <div style="background: rgba(10, 14, 39, 0.95); padding: 40px; border-radius: 12px; 
-                        backdrop-filter: blur(12px); border: 2px solid rgba(239, 68, 68, 0.5); position: relative; z-index: 1;">
-                <h1 style='color: #ef4444; font-size: 2.5rem; margin: 0 0 30px 0; font-weight: 700;'>
-                    Game Over!
+        st.markdown(textwrap.dedent(f"""
+            <div class="results-card">
+                <h1 class="orbitron-title" style="font-size: 2.5rem; margin-bottom: 20px;">
+                    MISSION ABORTED
                 </h1>
                 
-                <p style='color: #cbd5e1; font-size: 1.2rem; margin: 15px 0;'>
-                    <strong>{player_name}</strong>
+                <p style="color: #cbd5e1; font-family: 'Orbitron'; font-size: 1.1rem; margin-bottom: 5px;">
+                    {player_name}
                 </p>
                 
-                <p style='color: #f8fafc; font-size: 1.8rem; margin: 20px 0;'>
-                    <strong>Final Score: {st.session_state.score}</strong>
+                <p style="color: #94a3b8; font-family: 'Orbitron'; font-size: 0.9rem; margin-bottom: 25px;">
+                    SECTOR {st.session_state.level} CONTAINMENT BREACHED
                 </p>
                 
-                <p style='color: #cbd5e1; font-size: 1.2rem; margin: 15px 0;'>
-                    Level Reached: {st.session_state.level}
+                <p style="color: #f8fafc; font-size: 3rem; font-family: 'Orbitron'; font-weight: 900; margin: 0;">
+                    SCORE: {st.session_state.score}
                 </p>
                 
-                <div style='background: rgba(239, 68, 68, 0.2); padding: 15px; border-radius: 8px; margin: 25px 0;'>
-                    <p style='color: #ef4444; font-size: 1rem; margin: 0;'>
-                        Moonrocks Remaining: {rocks_left}
+                <div style="background: rgba(239, 68, 68, 0.2); padding: 15px; border-radius: 8px; margin: 25px 0; border: 1px solid rgba(239, 68, 68, 0.3);">
+                    <p style="color: #ef4444; font-family: 'Orbitron'; font-size: 1rem; margin: 0; text-align: center;">
+                        {rocks_left} TARGETS REMAINING IN SECTOR
                     </p>
                 </div>
             </div>
-        """, unsafe_allow_html=True)
+        """), unsafe_allow_html=True)
         
         st.write("")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button("Play Again", type="primary", use_container_width=True):
+        col_buttons = st.columns(2)
+        with col_buttons[0]:
+            if st.button("Play Again", type="primary", use_container_width=True, key="failed_retry"):
                 st.session_state.game_state = 'level_start'
                 st.rerun()
-        with col_b:
-            if st.button("Main Menu", use_container_width=True):
+        with col_buttons[1]:
+            if st.button("Main Menu", use_container_width=True, key="failed_menu"):
                 st.session_state.score = 0
                 st.session_state.level = 1
                 st.session_state.game_state = 'title'
                 st.rerun()
     
-    # Right: Snapshot with download
     with col2:
-        st.markdown("""
-            <div style="background: rgba(10, 14, 39, 0.95); padding: 20px; border-radius: 12px; 
-                        backdrop-filter: blur(12px); border: 2px solid rgba(239, 68, 68, 0.5); position: relative; z-index: 1; margin-bottom: 20px;">
-                <h3 style='color: #f8fafc; text-align: center; margin: 0;'>Your Space Selfie!</h3>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Snapshot capture and download
-        snapshot_html = """
-            <div style="text-align: center; position: relative; z-index: 1;">
-                <canvas id="snapshotCanvas" width="640" height="480" style="max-width: 100%; border-radius: 8px; border: 2px solid #ef4444; margin-bottom: 20px;"></canvas>
-                <br>
-                <a id="downloadLink" download="lunar_loot_spaceshot.png" style="display: inline-block; padding: 14px 28px; background: #ef4444; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-family: Orbitron; font-size: 1rem;">
-                    Download Selfie
+        snapshot_html = textwrap.dedent("""
+            <div class="results-card" style="text-align: center;">
+                <p style="color: #94a3b8; font-family: 'Orbitron'; font-size: 0.8rem; letter-spacing: 2px; margin-bottom: 15px;">
+                    LAST KNOWN VISUAL
+                </p>
+                <div class="selfie-frame">
+                    <canvas id="snapshotCanvas" width="640" height="480" style="max-width: 100%; border-radius: 4px;"></canvas>
+                </div>
+                <a id="downloadLink" download="lunar_loot_spaceshot.png" 
+                   style="display: inline-block; width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.8); 
+                          color: white; text-decoration: none; border-radius: 4px; font-weight: 600; 
+                          font-family: Orbitron; font-size: 0.9rem; text-transform: uppercase; text-align: center;">
+                    Download Archive
                 </a>
             </div>
             <script>
@@ -1446,11 +1476,11 @@ elif st.session_state.game_state == 'level_failed':
                     ctx.fillStyle = '#ef4444';
                     ctx.font = '24px Orbitron';
                     ctx.textAlign = 'center';
-                    ctx.fillText('Snapshot Captured!', canvas.width/2, canvas.height/2);
+                    ctx.fillText('NO DATA RECORDED', canvas.width/2, canvas.height/2);
                 }
             </script>
-        """
-        components.html(snapshot_html, height=600)
+        """)
+        st.components.v1.html(snapshot_html, height=650)
 
 # ==================== GAME COMPLETE SCREEN ====================
 elif st.session_state.game_state == 'game_complete':
