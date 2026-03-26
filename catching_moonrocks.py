@@ -8,6 +8,7 @@ import streamlit.components.v1 as components
 import os
 import base64
 import textwrap
+from assets_b64 import EARTH_ORB_B64
 
 # Page configuration
 st.set_page_config(
@@ -18,6 +19,117 @@ st.set_page_config(
 )
 
 GAME_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# --- HOLOGRAPHIC EARTH ORB MUSIC PLAYER ---
+def add_music_player():
+    playlist = [
+        {"title": "THE LUNAR LOOT LEGACY", "url": "https://cdn1.suno.ai/f1c19bb5-e78e-4eaa-a9b2-6e955211255d.mp3"},
+        {"title": "3RD WORLD MARS", "url": "https://cdn1.suno.ai/55dced68-f065-46fc-8d18-3d1a67282a67.mp3"}
+    ]
+    
+    player_html = f"""
+    <div id="orb-player-root" style="position: fixed; top: 15px; left: 15px; z-index: 999999; width: 180px; height: 180px; pointer-events: none;">
+        <div id="track-comms" class="comms-readout">INITIALIZING...</div>
+        <div class="orb-container" style="pointer-events: auto;">
+            <div class="holo-ring ring-1"></div>
+            <div class="holo-ring ring-2"></div>
+            <div class="earth-orb" style="background-image: url('data:image/jpeg;base64,{EARTH_ORB_B64}');">
+                <div class="orb-glare"></div>
+            </div>
+            <div class="circular-viz">
+                <div class="viz-bar-c"></div><div class="viz-bar-c"></div><div class="viz-bar-c"></div>
+                <div class="viz-bar-c"></div><div class="viz-bar-c"></div><div class="viz-bar-c"></div>
+                <div class="viz-bar-c"></div><div class="viz-bar-c"></div><div class="viz-bar-c"></div>
+                <div class="viz-bar-c"></div><div class="viz-bar-c"></div><div class="viz-bar-c"></div>
+            </div>
+            <div class="orbital-controls">
+                <button id="prev-btn" class="orb-btn prev">⏮</button>
+                <button id="play-btn" class="orb-btn play-main">▶</button>
+                <button id="next-btn" class="orb-btn next">⏭</button>
+                <div class="orb-vol-container">
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.5" class="orb-vol-slider">
+                </div>
+            </div>
+        </div>
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&display=swap');
+        #orb-player-root {{ font-family: 'Orbitron', sans-serif; display: flex; flex-direction: column; align-items: center; }}
+        .comms-readout {{ color: #00f3ff; font-size: 9px; font-weight: 900; letter-spacing: 2px; text-shadow: 0 0 10px #00f3ff; margin-bottom: 8px; text-transform: uppercase; background: rgba(0, 243, 255, 0.1); padding: 2px 8px; border-radius: 4px; border-left: 2px solid #00f3ff; animation: float 3s ease-in-out infinite; white-space: nowrap; }}
+        .orb-container {{ position: relative; width: 120px; height: 120px; cursor: pointer; }}
+        .earth-orb {{ position: absolute; top: 10px; left: 10px; width: 100px; height: 100px; border-radius: 50%; background-size: cover; background-position: center; box-shadow: 0 0 30px rgba(0, 243, 255, 0.4); z-index: 10; border: 1px solid rgba(0, 243, 255, 0.3); animation: pulse-orb 4s ease-in-out infinite; }}
+        .orb-glare {{ position: absolute; top: 10%; left: 10%; width: 80%; height: 80%; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2) 0%, transparent 60%); border-radius: 50%; }}
+        .holo-ring {{ position: absolute; border-radius: 50%; border: 1px solid rgba(0, 243, 255, 0.2); z-index: 5; }}
+        .ring-1 {{ width: 130px; height: 130px; top: -5px; left: -5px; border-style: dashed; animation: spin 20s linear infinite; }}
+        .ring-2 {{ width: 150px; height: 150px; top: -15px; left: -15px; border-style: solid; opacity: 0.3; animation: spin 30s linear infinite reverse; }}
+        .orbital-controls {{ position: absolute; top: -20px; left: -20px; width: 160px; height: 160px; opacity: 0; pointer-events: none; transition: all 0.4s ease; z-index: 20; }}
+        .orb-container:hover .orbital-controls {{ opacity: 1; pointer-events: auto; }}
+        .orb-btn {{ position: absolute; background: rgba(10, 16, 40, 0.9); border: 1px solid #00f3ff; color: #00f3ff; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(0, 243, 255, 0.4); transition: 0.2s; }}
+        .orb-btn:hover {{ background: #00f3ff; color: #0a1028; transform: scale(1.1); }}
+        .prev {{ top: 30px; left: -10px; }} .play-main {{ top: -15px; left: 58px; width: 44px; height: 44px; font-size: 18px; }} .next {{ top: 30px; right: -10px; }}
+        .orb-vol-container {{ position: absolute; bottom: -30px; left: 30px; width: 100px; }}
+        .orb-vol-slider {{ width: 100%; height: 2px; accent-color: #00f3ff; }}
+        .circular-viz {{ position: absolute; top: 0; left: 0; width: 120px; height: 120px; z-index: 15; pointer-events: none; }}
+        .viz-bar-c {{ position: absolute; bottom: 50%; left: 50%; width: 2px; height: 5px; background: #00f3ff; transform-origin: bottom center; opacity: 0.6; }}
+        .playing .viz-bar-c {{ animation: viz-pulse 0.5s ease-in-out infinite alternate; }}
+        .viz-bar-c:nth-child(1) {{ transform: translate(-50%, 0) rotate(0deg) translateY(-54px); }}
+        .viz-bar-c:nth-child(2) {{ transform: translate(-50%, 0) rotate(30deg) translateY(-54px); animation-delay:0.1s; }}
+        .viz-bar-c:nth-child(3) {{ transform: translate(-50%, 0) rotate(60deg) translateY(-54px); animation-delay:0.2s; }}
+        .viz-bar-c:nth-child(4) {{ transform: translate(-50%, 0) rotate(90deg) translateY(-54px); animation-delay:0.3s; }}
+        .viz-bar-c:nth-child(5) {{ transform: translate(-50%, 0) rotate(120deg) translateY(-54px); animation-delay:0.4s; }}
+        .viz-bar-c:nth-child(6) {{ transform: translate(-50%, 0) rotate(150deg) translateY(-54px); animation-delay:0.5s; }}
+        .viz-bar-c:nth-child(7) {{ transform: translate(-50%, 0) rotate(180deg) translateY(-54px); animation-delay:0.6s; }}
+        .viz-bar-c:nth-child(8) {{ transform: translate(-50%, 0) rotate(210deg) translateY(-54px); animation-delay:0.7s; }}
+        .viz-bar-c:nth-child(9) {{ transform: translate(-50%, 0) rotate(240deg) translateY(-54px); animation-delay:0.8s; }}
+        .viz-bar-c:nth-child(10) {{ transform: translate(-50%, 0) rotate(270deg) translateY(-54px); animation-delay:0.1s; }}
+        .viz-bar-c:nth-child(11) {{ transform: translate(-50%, 0) rotate(300deg) translateY(-54px); animation-delay:0.2s; }}
+        .viz-bar-c:nth-child(12) {{ transform: translate(-50%, 0) rotate(330deg) translateY(-54px); animation-delay:0.3s; }}
+        @keyframes viz-pulse {{ to {{ height: 15px; opacity: 1; }} }}
+        @keyframes spin {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
+        @keyframes float {{ 0%, 100% {{ transform: translateY(0); }} 50% {{ transform: translateY(-5px); }} }}
+        @keyframes pulse-orb {{ 0%, 100% {{ opacity: 0.8; }} 50% {{ opacity: 1; }} }}
+        </style>
+        <script>
+        (function() {{
+            const playlist = {playlist};
+            let currentIndex = parseInt(localStorage.getItem('lunar_loot_track_index_v2')) || 0;
+            let audio = window.lunarAudioPlayer || new Audio();
+            window.lunarAudioPlayer = audio;
+            const comms = document.getElementById('track-comms');
+            const playBtn = document.getElementById('play-btn');
+            const root = document.getElementById('orb-player-root');
+            function updateUI() {{
+                const track = playlist[currentIndex];
+                comms.textContent = "COMM: " + track.title;
+                playBtn.textContent = audio.paused ? '▶' : '⏸';
+                if (!audio.paused) root.classList.add('playing');
+                else root.classList.remove('playing');
+            }}
+            function loadTrack(index) {{
+                currentIndex = index;
+                audio.src = playlist[currentIndex].url;
+                audio.load();
+                localStorage.setItem('lunar_loot_track_index_v2', index);
+                updateUI();
+            }}
+            playBtn.onclick = (e) => {{ e.stopPropagation(); if (audio.paused) audio.play().then(updateUI); else {{ audio.pause(); updateUI(); }} }};
+            document.getElementById('next-btn').onclick = (e) => {{ e.stopPropagation(); loadTrack((currentIndex + 1) % playlist.length); audio.play().then(updateUI); }};
+            document.getElementById('prev-btn').onclick = (e) => {{ e.stopPropagation(); loadTrack((currentIndex - 1 + playlist.length) % playlist.length); audio.play().then(updateUI); }};
+            document.getElementById('volume-slider').oninput = (e) => {{ audio.volume = e.target.value; localStorage.setItem('lunar_loot_volume_v2', e.target.value); }};
+            audio.onended = () => document.getElementById('next-btn').onclick();
+            const savedVol = localStorage.getItem('lunar_loot_volume_v2');
+            if (savedVol !== null) {{ audio.volume = parseFloat(savedVol); document.getElementById('volume-slider').value = savedVol; }}
+            if (!audio.src) loadTrack(currentIndex); else updateUI();
+            setInterval(() => {{ if (comms.textContent !== "COMM: " + playlist[currentIndex].title) updateUI(); }}, 1000);
+        }})();
+        </script>
+    </div>
+    """
+    components.html(player_html, height=220)
+
+# Anchor the music player to the top
+st.markdown('<div id="music-player-anchor">', unsafe_allow_html=True)
+add_music_player()
+st.markdown('</div>', unsafe_allow_html=True)
 
 # Sector names for 14 levels
 SECTOR_NAMES = {
@@ -248,227 +360,24 @@ st.markdown("""
         right: 20px;
         z-index: 9999;
     }
-    </style>
+    
+    /* Force the music player iframe to absolute top-left of viewport */
+    #music-player-anchor iframe {
+        position: fixed !important;
+        top: 0px !important;
+        left: 0px !important;
+        width: 220px !important;
+        height: 220px !important;
+        z-index: 1000000 !important;
+        border: none !important;
+        pointer-events: none !important;
+        background: transparent !important;
+    }
+    /* Only the children of the root in components.html should have pointer-events auto */
+</style>
 """, unsafe_allow_html=True)
 
-# --- PERSISTENT ROTATING MUSIC PLAYER ---
-def add_music_player():
-    playlist = [
-        {"title": "LUNAR MENU THEME", "url": "https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/menu_theme.wav"},
-        {"title": "3RD WORLD MARS", "url": "https://cdn1.suno.ai/58c5f1ef-851c-44d6-83c6-69b5aa2b8b6e.mp3"},
-        {"title": "PARALLEL FREQUENCIES", "url": "https://cdn1.suno.ai/fe89d5b0-1125-4b82-9b9e-408b11b3bb51.mp3"}
-    ]
-    
-    player_html = f"""
-    <div id="music-player-root" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10000; width: 340px;">
-        <div class="music-glass-panel">
-            <div class="music-info">
-                <div class="now-playing-label">NOW SCANNING FREQUENCES</div>
-                <div id="track-title" class="track-name">INITIALIZING COMMS...</div>
-            </div>
-            
-            <div class="visualizer-container">
-                <div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div>
-                <div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div>
-            </div>
-
-            <div class="music-controls">
-                <button id="prev-btn" class="control-btn">⏮</button>
-                <button id="play-btn" class="control-btn play-main">▶</button>
-                <button id="next-btn" class="control-btn">⏭</button>
-                <div class="volume-container">
-                    <span style="font-size: 10px; margin-right: 5px;">🔊</span>
-                    <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.5">
-                </div>
-            </div>
-        </div>
-
-        <style>
-        .music-glass-panel {{
-            background: rgba(10, 16, 40, 0.85);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(0, 243, 255, 0.3);
-            border-radius: 12px;
-            padding: 12px 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(0, 243, 255, 0.1);
-            font-family: 'Orbitron', sans-serif;
-            color: white;
-        }}
-        .music-info {{
-            text-align: center;
-        }}
-        .now-playing-label {{
-            font-size: 8px;
-            color: #94a3b8;
-            letter-spacing: 2px;
-            margin-bottom: 4px;
-        }}
-        .track-name {{
-            font-size: 11px;
-            font-weight: 900;
-            color: #00f3ff;
-            letter-spacing: 1px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }}
-        .music-controls {{
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-        }}
-        .control-btn {{
-            background: none;
-            border: none;
-            color: #94a3b8;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.2s;
-            padding: 0;
-            display: flex;
-            align-items: center;
-        }}
-        .control-btn:hover {{
-            color: #00f3ff;
-            transform: scale(1.2);
-        }}
-        .play-main {{
-            font-size: 22px;
-            color: #FFFFFF;
-        }}
-        .volume-container {{
-            display: flex;
-            align-items: center;
-            margin-left: 10px;
-        }}
-        #volume-slider {{
-            width: 60px;
-            cursor: pointer;
-            accent-color: #00f3ff;
-        }}
-        /* Visualizer Animation */
-        .visualizer-container {{
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            gap: 3px;
-            height: 15px;
-            margin: 2px 0;
-        }}
-        .viz-bar {{
-            width: 3px;
-            height: 100%;
-            background: #a855f7;
-            border-radius: 1px;
-        }}
-        .playing .viz-bar {{
-            animation: bounce 0.8s ease-in-out infinite alternate;
-        }}
-        .playing .viz-bar:nth-child(2) {{ animation-delay: 0.1s; height: 60%; background: #00f3ff; }}
-        .playing .viz-bar:nth-child(3) {{ animation-delay: 0.2s; height: 80%; }}
-        .playing .viz-bar:nth-child(4) {{ animation-delay: 0.3s; height: 50%; background: #00f3ff; }}
-        .playing .viz-bar:nth-child(5) {{ animation-delay: 0.4s; height: 90%; }}
-        .playing .viz-bar:nth-child(6) {{ animation-delay: 0.5s; height: 40%; background: #00f3ff; }}
-        
-        @keyframes bounce {{
-            0% {{ height: 20%; }}
-            100% {{ height: 100%; }}
-        }}
-        </style>
-
-        <script>
-        (function() {{
-            const playlist = {playlist};
-            let currentIndex = parseInt(localStorage.getItem('lunar_loot_track_index')) || 0;
-            let audio = window.lunarAudioPlayer;
-
-            if (!audio) {{
-                audio = new Audio();
-                window.lunarAudioPlayer = audio;
-            }}
-
-            const titleEl = document.getElementById('track-title');
-            const playBtn = document.getElementById('play-btn');
-            const nextBtn = document.getElementById('next-btn');
-            const prevBtn = document.getElementById('prev-btn');
-            const volSlider = document.getElementById('volume-slider');
-            const root = document.getElementById('music-player-root');
-
-            function updateUI() {{
-                const track = playlist[currentIndex];
-                titleEl.textContent = track.title;
-                playBtn.textContent = audio.paused ? '▶' : '⏸';
-                if (!audio.paused) root.classList.add('playing');
-                else root.classList.remove('playing');
-            }}
-
-            function loadTrack(index) {{
-                currentIndex = index;
-                const track = playlist[currentIndex];
-                audio.src = track.url;
-                audio.load();
-                localStorage.setItem('lunar_loot_track_index', index);
-                updateUI();
-            }}
-
-            // Event Listeners
-            playBtn.onclick = () => {{
-                if (audio.paused) {{
-                    audio.play().then(updateUI).catch(e => console.log('Audio error:', e));
-                }} else {{
-                    audio.pause();
-                    updateUI();
-                }}
-            }};
-
-            nextBtn.onclick = () => {{
-                loadTrack((currentIndex + 1) % playlist.length);
-                audio.play().then(updateUI);
-            }};
-
-            prevBtn.onclick = () => {{
-                loadTrack((currentIndex - 1 + playlist.length) % playlist.length);
-                audio.play().then(updateUI);
-            }};
-
-            volSlider.oninput = (e) => {{
-                audio.volume = e.target.value;
-                localStorage.setItem('lunar_loot_volume', e.target.value);
-            }};
-
-            audio.onended = () => {{
-                nextBtn.onclick();
-            }};
-
-            // Initialize
-            const savedVol = localStorage.getItem('lunar_loot_volume');
-            if (savedVol !== null) {{
-                audio.volume = parseFloat(savedVol);
-                volSlider.value = savedVol;
-            }} else {{
-                audio.volume = 0.5;
-            }}
-
-            if (!audio.src) {{
-                loadTrack(currentIndex);
-            }} else {{
-                updateUI();
-            }}
-
-            // Handle track sync if someone else changed it
-            setInterval(() => {{
-                if (titleEl.textContent !== playlist[currentIndex].title) updateUI();
-            }}, 1000);
-
-        }})();
-        </script>
-    </div>
-    """
-    components.html(player_html, height=160)
+# Music player moved to top
 
 # ==================== INTRO SCREEN ====================
 if st.session_state.game_state == 'intro':
@@ -1798,97 +1707,108 @@ elif st.session_state.game_state == 'leaderboard':
             margin-bottom: 50px;
         }
         
-        /* Podium Cards */
+        /* Podium Cards styling */
         .podium-card {
-            background: rgba(10, 16, 40, 0.7);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 30px;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px 20px;
             text-align: center;
-            position: relative;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             margin-bottom: 20px;
-            color: white;
-            transition: transform 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
         .podium-card:hover {
-            transform: scale(1.02);
+            transform: translateY(-10px);
+            background: rgba(15, 23, 42, 0.85);
         }
-        
+        .podium-card h2 {
+            font-family: 'Orbitron', sans-serif !important;
+            margin: 10px 0;
+            font-weight: 900;
+            letter-spacing: 2px;
+        }
+
         /* Gold (1st) */
         .card-gold {
             border: 2px solid #fbbf24;
-            box-shadow: 0 0 20px rgba(251, 191, 36, 0.4), inset 0 0 20px rgba(251, 191, 36, 0.1);
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.4), inset 0 0 20px rgba(251, 191, 36, 0.1);
+            animation: podium-glow 3s infinite;
             transform: scale(1.05);
             z-index: 10;
         }
+        @keyframes podium-glow {
+            0%, 100% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.4); }
+            50% { box-shadow: 0 0 50px rgba(251, 191, 36, 0.7); }
+        }
         .card-gold h2 { color: #fbbf24; text-shadow: 0 0 10px #fbbf24; }
-        
+
         /* Silver (2nd) */
         .card-silver {
-            border: 2px solid #e2e8f0;
-            box-shadow: 0 0 15px rgba(226, 232, 240, 0.3), inset 0 0 15px rgba(226, 232, 240, 0.1);
+            border: 2px solid #94a3b8;
+            box-shadow: 0 0 20px rgba(148, 163, 184, 0.3), inset 0 0 15px rgba(148, 163, 184, 0.1);
         }
-        .card-silver h2 { color: #e2e8f0; text-shadow: 0 0 10px #e2e8f0; }
+        .card-silver h2 { color: #f8fafc; text-shadow: 0 0 10px rgba(148, 163, 184, 0.5); }
         
         /* Bronze (3rd) */
         .card-bronze {
             border: 2px solid #b45309;
-            box-shadow: 0 0 15px rgba(180, 83, 9, 0.4), inset 0 0 15px rgba(180, 83, 9, 0.1);
+            box-shadow: 0 0 20px rgba(180, 83, 9, 0.3), inset 0 0 15px rgba(180, 83, 9, 0.1);
         }
-        .card-bronze h2 { color: #b45309; text-shadow: 0 0 10px #b45309; }
+        .card-bronze h2 { color: #f97316; text-shadow: 0 0 10px rgba(180, 83, 9, 0.5); }
         
-        /* Ranks List Table */
+        /* Rankings Table */
         .rank-table {
             width: 100%;
             border-collapse: separate;
-            border-spacing: 0 12px;
-            margin-top: 30px;
+            border-spacing: 0 10px;
+            margin-top: 20px;
         }
         .rank-table th {
-            color: #94a3b8;
+            color: #64748b;
             text-align: left;
-            padding: 10px 20px;
-            font-size: 0.85rem;
-            letter-spacing: 3px;
+            padding: 15px 25px;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
             text-transform: uppercase;
-            font-weight: 700;
-            border-bottom: 2px solid rgba(0, 243, 255, 0.2);
+            font-family: 'Orbitron', sans-serif !important;
+            border-bottom: 2px solid rgba(0, 243, 255, 0.1);
         }
         .rank-table td {
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(12px);
-            padding: 18px 20px;
-            color: #e2e8f0;
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            padding: 15px 25px;
+            color: #cbd5e1;
             font-size: 1rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            transition: all 0.3s ease;
         }
         .rank-table tr td:first-child { 
             border-top-left-radius: 12px; 
             border-bottom-left-radius: 12px; 
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
         }
         .rank-table tr td:last-child { 
             border-top-right-radius: 12px; 
             border-bottom-right-radius: 12px; 
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
         }
-        
         .rank-table tr:hover td {
-            background: rgba(99, 102, 241, 0.2);
-            border-color: rgba(0, 243, 255, 0.4);
+            background: rgba(51, 65, 85, 0.8);
             color: #fff;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
         }
         
-        /* Player Row Selection Glow */
+        /* Active Player Row */
         .row-accent td {
-            background: rgba(0, 243, 255, 0.1) !important;
-            border-top: 1px solid #00f3ff !important;
-            border-bottom: 1px solid #00f3ff !important;
-            box-shadow: inset 0 0 15px rgba(0, 243, 255, 0.1);
+            background: rgba(0, 243, 255, 0.08) !important;
+            border-top: 1px solid rgba(0, 243, 255, 0.3) !important;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.3) !important;
         }
-        .row-accent td:first-child { border-left: 2px solid #00f3ff !important; }
-        .row-accent td:last-child { border-right: 2px solid #00f3ff !important; }
+        .row-accent td:first-child { border-left: 3px solid #00f3ff !important; }
+        .row-accent td:last-child { border-right: 1px solid rgba(0, 243, 255, 0.3) !important; }
         
         .rank-num { color: #64748b; font-weight: 900; font-family: monospace; font-size: 1.2rem; }
         .score-val { color: #00f3ff; font-weight: 900; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); }
@@ -2020,5 +1940,4 @@ elif st.session_state.game_state == 'leaderboard':
         if len(scores) > 3:
             st.markdown(table_header + table_rows + table_footer, unsafe_allow_html=True)
 
-# Persistent Music Player Footer
-add_music_player()
+# Persistent Music Player initialization moved to top for priority
