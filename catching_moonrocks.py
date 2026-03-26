@@ -1308,63 +1308,61 @@ elif st.session_state.game_state == 'level_complete':
     logo_bytes = load_logo()
     
     st.markdown(textwrap.dedent("""
-        <style>
-        .stApp {
-            background: linear-gradient(135deg, #0a1028 0%, #1a1f3a 100%) !important;
-        }
-        iframe, .stMarkdown iframe {
-            display: none !important;
-        }
-        .results-card {
-            background: rgba(10, 16, 40, 0.9);
-            backdrop-filter: blur(15px);
-            border: 2px solid #00f3ff;
-            border-radius: 16px;
-            padding: 40px;
-            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
-            text-align: center;
-            margin: 20px 0;
-        }
-        .orbitron-title {
-            font-family: 'Orbitron', sans-serif;
-            color: #00f3ff;
-            text-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
-            font-weight: 900;
-        }
-        </style>
+<style>
+.stApp {
+    background: linear-gradient(135deg, #0a1028 0%, #1a1f3a 100%) !important;
+}
+iframe, .stMarkdown iframe {
+    display: none !important;
+}
+.results-card {
+    background: rgba(10, 16, 40, 0.9);
+    backdrop-filter: blur(15px);
+    border: 2px solid #00f3ff;
+    border-radius: 16px;
+    padding: 40px;
+    box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
+    text-align: center;
+    margin: 20px 0;
+}
+.orbitron-title {
+    font-family: 'Orbitron', sans-serif;
+    color: #00f3ff;
+    text-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+    font-weight: 900;
+}
+</style>
     """), unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if logo_bytes:
             st.markdown(textwrap.dedent(f"""
-                <div style="text-align: center; margin: 20px 0;">
-                    <img src="data:image/png;base64,{logo_bytes}" style="max-width: 320px;">
-                </div>
+<div style="text-align: center; margin: 20px 0;">
+    <img src="data:image/png;base64,{logo_bytes}" style="max-width: 320px;">
+</div>
             """), unsafe_allow_html=True)
         
         st.markdown(textwrap.dedent(f"""
-            <div class="results-card">
-                <h1 class="orbitron-title" style="font-size: 2.5rem; margin-bottom: 10px;">
-                    MISSION ACCOMPLISHED
-                </h1>
-                <p style="color: #94a3b8; font-family: 'Orbitron'; font-size: 0.9rem; letter-spacing: 2px; margin-bottom: 30px;">
-                    SECTOR {st.session_state.level - 1} SECURED
-                </p>
-                
-                <p style="color: #cbd5e1; font-family: 'Orbitron'; font-size: 1.1rem; margin-bottom: 5px;">
-                    TACTICAL SCORE
-                </p>
-                <h2 style="color: #ffffff; font-family: 'Orbitron'; font-size: 4rem; font-weight: 900; margin: 0; text-shadow: 0 0 20px rgba(255,255,255,0.3);">
-                    {st.session_state.score}
-                </h2>
-                
-                <div style="margin-top: 30px; padding: 15px; background: rgba(0, 243, 255, 0.1); border-radius: 8px;">
-                    <p style="color: #22c55e; font-family: 'Orbitron'; font-size: 1rem; margin: 0;">
-                        ★ DATA PACKET UPLOADED ★
-                    </p>
-                </div>
-            </div>
+<div class="results-card">
+<h1 class="orbitron-title" style="font-size: 2.5rem; margin-bottom: 10px;">
+MISSION ACCOMPLISHED
+</h1>
+<p style="color: #94a3b8; font-family: 'Orbitron'; font-size: 0.9rem; letter-spacing: 2px; margin-bottom: 30px;">
+SECTOR {st.session_state.level - 1} SECURED
+</p>
+<p style="color: #cbd5e1; font-family: 'Orbitron'; font-size: 1.1rem; margin-bottom: 5px;">
+TACTICAL SCORE
+</p>
+<h2 style="color: #ffffff; font-family: 'Orbitron'; font-size: 4rem; font-weight: 900; margin: 0; text-shadow: 0 0 20px rgba(255,255,255,0.3);">
+{st.session_state.score}
+</h2>
+<div style="margin-top: 30px; padding: 15px; background: rgba(0, 243, 255, 0.1); border-radius: 8px;">
+<p style="color: #22c55e; font-family: 'Orbitron'; font-size: 1rem; margin: 0;">
+★ DATA PACKET UPLOADED ★
+</p>
+</div>
+</div>
         """), unsafe_allow_html=True)
     
     import time
@@ -1378,46 +1376,46 @@ elif st.session_state.game_state == 'level_failed':
     bg_bytes = load_background(st.session_state.level)
     
     st.markdown(textwrap.dedent(f"""
-        <style>
-        .stApp {{
-            background-image: url(data:image/png;base64,{bg_bytes if bg_bytes else ""});
-            background-size: cover;
-            background-position: center;
-        }}
-        .stApp::before {{
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(10, 16, 40, 0.85);
-            z-index: 0;
-        }}
-        iframe, .stMarkdown iframe {{
-            display: none !important;
-        }}
-        .results-card {{
-            background: rgba(10, 16, 40, 0.95);
-            backdrop-filter: blur(15px);
-            border: 2px solid #ef4444;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 0 30px rgba(239, 68, 68, 0.2);
-            position: relative;
-            z-index: 1;
-        }}
-        .orbitron-title {{
-            font-family: 'Orbitron', sans-serif;
-            color: #ef4444;
-            text-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
-            font-weight: 900;
-        }}
-        .selfie-frame {{
-            border: 2px solid #ef4444;
-            border-radius: 8px;
-            background: rgba(0,0,0,0.5);
-            padding: 10px;
-            margin-bottom: 15px;
-        }}
-        </style>
+<style>
+.stApp {{
+    background-image: url(data:image/png;base64,{bg_bytes if bg_bytes else ""});
+    background-size: cover;
+    background-position: center;
+}}
+.stApp::before {{
+    content: '';
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(10, 16, 40, 0.85);
+    z-index: 0;
+}}
+iframe, .stMarkdown iframe {{
+    display: none !important;
+}}
+.results-card {{
+    background: rgba(10, 16, 40, 0.95);
+    backdrop-filter: blur(15px);
+    border: 2px solid #ef4444;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.2);
+    position: relative;
+    z-index: 1;
+}}
+.orbitron-title {{
+    font-family: 'Orbitron', sans-serif;
+    color: #ef4444;
+    text-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+    font-weight: 900;
+}}
+.selfie-frame {{
+    border: 2px solid #ef4444;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.5);
+    padding: 10px;
+    margin-bottom: 15px;
+}}
+</style>
     """), unsafe_allow_html=True)
     
     col1, col2 = st.columns([1, 1], gap="large")
@@ -1427,29 +1425,25 @@ elif st.session_state.game_state == 'level_failed':
         player_name = st.session_state.spacetag or "Anonymous"
         
         st.markdown(textwrap.dedent(f"""
-            <div class="results-card">
-                <h1 class="orbitron-title" style="font-size: 2.5rem; margin-bottom: 20px;">
-                    MISSION ABORTED
-                </h1>
-                
-                <p style="color: #cbd5e1; font-family: 'Orbitron'; font-size: 1.1rem; margin-bottom: 5px;">
-                    {player_name}
-                </p>
-                
-                <p style="color: #94a3b8; font-family: 'Orbitron'; font-size: 0.9rem; margin-bottom: 25px;">
-                    SECTOR {st.session_state.level} CONTAINMENT BREACHED
-                </p>
-                
-                <p style="color: #f8fafc; font-size: 3rem; font-family: 'Orbitron'; font-weight: 900; margin: 0;">
-                    SCORE: {st.session_state.score}
-                </p>
-                
-                <div style="background: rgba(239, 68, 68, 0.2); padding: 15px; border-radius: 8px; margin: 25px 0; border: 1px solid rgba(239, 68, 68, 0.3);">
-                    <p style="color: #ef4444; font-family: 'Orbitron'; font-size: 1rem; margin: 0; text-align: center;">
-                        {rocks_left} TARGETS REMAINING IN SECTOR
-                    </p>
-                </div>
-            </div>
+<div class="results-card">
+<h1 class="orbitron-title" style="font-size: 2.5rem; margin-bottom: 20px;">
+MISSION ABORTED
+</h1>
+<p style="color: #cbd5e1; font-family: 'Orbitron'; font-size: 1.1rem; margin-bottom: 5px;">
+{player_name}
+</p>
+<p style="color: #94a3b8; font-family: 'Orbitron'; font-size: 0.9rem; margin-bottom: 25px;">
+SECTOR {st.session_state.level} CONTAINMENT BREACHED
+</p>
+<p style="color: #f8fafc; font-size: 3rem; font-family: 'Orbitron'; font-weight: 900; margin: 0;">
+SCORE: {st.session_state.score}
+</p>
+<div style="background: rgba(239, 68, 68, 0.2); padding: 15px; border-radius: 8px; margin: 25px 0; border: 1px solid rgba(239, 68, 68, 0.3);">
+<p style="color: #ef4444; font-family: 'Orbitron'; font-size: 1rem; margin: 0; text-align: center;">
+{rocks_left} TARGETS REMAINING IN SECTOR
+</p>
+</div>
+</div>
         """), unsafe_allow_html=True)
         
         st.write("")
@@ -1467,41 +1461,41 @@ elif st.session_state.game_state == 'level_failed':
     
     with col2:
         snapshot_html = textwrap.dedent("""
-            <div class="results-card" style="text-align: center;">
-                <p style="color: #94a3b8; font-family: 'Orbitron'; font-size: 0.8rem; letter-spacing: 2px; margin-bottom: 15px;">
-                    LAST KNOWN VISUAL
-                </p>
-                <div class="selfie-frame">
-                    <canvas id="snapshotCanvas" width="640" height="480" style="max-width: 100%; border-radius: 4px;"></canvas>
-                </div>
-                <a id="downloadLink" download="lunar_loot_spaceshot.png" 
-                   style="display: inline-block; width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.8); 
-                          color: white; text-decoration: none; border-radius: 4px; font-weight: 600; 
-                          font-family: Orbitron; font-size: 0.9rem; text-transform: uppercase; text-align: center;">
-                    Download Archive
-                </a>
-            </div>
-            <script>
-                const canvas = document.getElementById('snapshotCanvas');
-                const ctx = canvas.getContext('2d');
-                const snapshot = localStorage.getItem('lunar_loot_snapshot');
-                
-                if (snapshot) {
-                    const img = new Image();
-                    img.onload = () => {
-                        ctx.drawImage(img, 0, 0);
-                        document.getElementById('downloadLink').href = snapshot;
-                    };
-                    img.src = snapshot;
-                } else {
-                    ctx.fillStyle = '#1a1f3a';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = '#ef4444';
-                    ctx.font = '24px Orbitron';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('NO DATA RECORDED', canvas.width/2, canvas.height/2);
-                }
-            </script>
+<div class="results-card" style="text-align: center;">
+<p style="color: #94a3b8; font-family: 'Orbitron'; font-size: 0.8rem; letter-spacing: 2px; margin-bottom: 15px;">
+LAST KNOWN VISUAL
+</p>
+<div class="selfie-frame">
+<canvas id="snapshotCanvas" width="640" height="480" style="max-width: 100%; border-radius: 4px;"></canvas>
+</div>
+<a id="downloadLink" download="lunar_loot_spaceshot.png" 
+   style="display: inline-block; width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.8); 
+          color: white; text-decoration: none; border-radius: 4px; font-weight: 600; 
+          font-family: Orbitron; font-size: 0.9rem; text-transform: uppercase; text-align: center;">
+Download Archive
+</a>
+</div>
+<script>
+const canvas = document.getElementById('snapshotCanvas');
+const ctx = canvas.getContext('2d');
+const snapshot = localStorage.getItem('lunar_loot_snapshot');
+
+if (snapshot) {
+    const img = new Image();
+    img.onload = () => {
+        ctx.drawImage(img, 0, 0);
+        document.getElementById('downloadLink').href = snapshot;
+    };
+    img.src = snapshot;
+} else {
+    ctx.fillStyle = '#1a1f3a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '24px Orbitron';
+    ctx.textAlign = 'center';
+    ctx.fillText('NO DATA RECORDED', canvas.width/2, canvas.height/2);
+}
+</script>
         """)
         st.components.v1.html(snapshot_html, height=650)
 
