@@ -7,6 +7,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import os
 import base64
+import textwrap
 
 # Page configuration
 st.set_page_config(
