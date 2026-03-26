@@ -762,6 +762,32 @@ elif st.session_state.game_state == 'playing':
                     ctx.fillRect(canvas.width/2 - (pulseWidth/2), footerY + 10, pulseWidth, 4);
                     ctx.restore();
                 }}
+
+                // --- ANIMATED GESTURE BONUS HELPER ---
+                function drawAnimatedBonus(text, color, untilTime, currentTime) {{
+                    const duration = 2.0;
+                    const startTime = untilTime - duration;
+                    const elapsed = currentTime - startTime;
+                    const progress = Math.min(1.0, elapsed / duration);
+                    
+                    if (progress < 0 || progress >= 1) return;
+                    
+                    const alpha = 1.0 - progress;
+                    const yOffset = progress * 60; // Float upwards
+                    
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.font = 'bold 32px Orbitron';
+                    ctx.fillStyle = color;
+                    ctx.globalAlpha = alpha;
+                    
+                    // Neon Glow
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = color;
+                    
+                    ctx.fillText(text, canvas.width / 2, (canvas.height / 2) - 40 - yOffset);
+                    ctx.restore();
+                }}
                 // ---------------------------------------------
                 
                 const video = document.getElementById('video');
@@ -1106,24 +1132,9 @@ elif st.session_state.game_state == 'playing':
                         ctx.fillText(`COMBO x${{combo + 1}}!`, panelX + 10, panelY + 130);
                     }}
                     
-                    // Display gesture bonuses (persistent for 2 seconds)
-                    if (currentTime < peaceDisplayUntil) {{
-                        ctx.fillStyle = '#22C55E';
-                        ctx.font = 'bold 48px Orbitron';
-                        ctx.shadowBlur = 20;
-                        ctx.shadowColor = '#22C55E';
-                        ctx.fillText('✌️ PEACE! +50', canvas.width/2 - 150, canvas.height/2 - 50);
-                        ctx.shadowBlur = 0;
-                    }}
-                    
-                    if (currentTime < thumbsDisplayUntil) {{
-                        ctx.fillStyle = '#FFD700';
-                        ctx.font = 'bold 48px Orbitron';
-                        ctx.shadowBlur = 20;
-                        ctx.shadowColor = '#FFD700';
-                        ctx.fillText('👍 THUMBS UP! +100', canvas.width/2 - 180, canvas.height/2 - 50);
-                        ctx.shadowBlur = 0;
-                    }}
+                    // Display gesture bonuses (persistent for 2 seconds with animation)
+                    drawAnimatedBonus('✌️ PEACE! +50', '#22C55E', peaceDisplayUntil, currentTime);
+                    drawAnimatedBonus('👍 THUMBS UP! +100', '#FFD700', thumbsDisplayUntil, currentTime);
                     
                     // Check win/lose conditions - AUTO ADVANCE
                     if (rocksLeft === 0 && !levelComplete) {{
