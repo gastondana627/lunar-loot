@@ -628,8 +628,8 @@ elif st.session_state.game_state == 'playing':
                 
                 // --- NEON PROGRESS BAR HELPER ---
                 function drawLiquidProgressBar(progress, rocksLeft) {{
-                    const barWidth = 400;
-                    const barHeight = 24;
+                    const barWidth = 300;
+                    const barHeight = 20;
                     const x = (canvas.width - barWidth) / 2;
                     const y = 15;
                     
@@ -1099,38 +1099,61 @@ elif st.session_state.game_state == 'playing':
                         beepSound.play().catch(e => console.log('Audio play failed:', e));
                     }}
                     
-                    // Draw compact score panel (top right corner, smaller)
-                    const panelWidth = 180;
-                    const panelHeight = combo > 0 ? 140 : 120;
-                    const panelX = canvas.width - panelWidth - 10;
-                    const panelY = 10;
+                    // --- Premium Glassmorphic Stats Panel (Top Right) ---
+                    const panelWidth = 160;
+                    const panelHeight = combo > 0 ? 110 : 90;
+                    const panelX = canvas.width - panelWidth - 15;
+                    const panelY = 15;
                     
-                    ctx.fillStyle = 'rgba(10, 14, 39, 0.9)';
-                    ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
-                    ctx.strokeStyle = 'rgba(99, 102, 241, 0.6)';
+                    // Glass Background
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(10, 16, 40, 0.8)';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                    if (ctx.roundRect) {{
+                        ctx.beginPath();
+                        ctx.roundRect(panelX, panelY, panelWidth, panelHeight, 8);
+                        ctx.fill();
+                    }} else {{
+                        ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+                    }}
+                    
+                    // Dual-tone border
+                    ctx.strokeStyle = 'rgba(0, 243, 255, 0.4)';
                     ctx.lineWidth = 1;
-                    ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+                    ctx.stroke();
+                    ctx.restore();
                     
-                    ctx.fillStyle = '#6366f1';
-                    ctx.font = 'bold 16px Orbitron';
-                    ctx.fillText('{st.session_state.spacetag or "Player"}', panelX + 10, panelY + 25);
+                    // Stats Content
+                    ctx.textAlign = 'left';
+                    const textX = panelX + 12;
                     
+                    // Spacetag / Title
+                    ctx.fillStyle = '#00f3ff';
+                    ctx.font = '900 12px Orbitron';
+                    ctx.fillText('{st.session_state.spacetag or "PILOT"}'.toUpperCase(), textX, panelY + 22);
+                    
+                    // Score
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '500 10px Orbitron';
+                    ctx.fillText('SCORE', textX, panelY + 42);
                     ctx.fillStyle = '#FFFFFF';
-                    ctx.font = '14px Orbitron';
-                    ctx.fillText('Score:', panelX + 10, panelY + 50);
-                    ctx.fillStyle = '#22C55E';
-                    ctx.fillText(score.toString(), panelX + 70, panelY + 50);
+                    ctx.font = '900 14px Orbitron';
+                    ctx.fillText(score.toLocaleString(), textX + 50, panelY + 42);
                     
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.fillText(`Level: {st.session_state.level}`, panelX + 10, panelY + 70);
+                    // Level & Time (Compact row)
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '500 10px Orbitron';
+                    ctx.fillText(`LVL ${{level}}`, textX, panelY + 62);
                     
                     ctx.fillStyle = remaining < 10 ? '#EF4444' : '#FFFFFF';
-                    ctx.fillText(`Time: ${{Math.floor(remaining)}}s`, panelX + 10, panelY + 90);
+                    ctx.font = 'bold 10px Orbitron';
+                    ctx.fillText(`TIME: ${{Math.floor(remaining)}}S`, textX + 50, panelY + 62);
                     
                     if (combo > 0) {{
                         ctx.fillStyle = '#22C55E';
-                        ctx.font = 'bold 14px Orbitron';
-                        ctx.fillText(`COMBO x${{combo + 1}}!`, panelX + 10, panelY + 130);
+                        ctx.font = '900 11px Orbitron';
+                        ctx.fillText(`COMBO X${{combo + 1}}`, textX, panelY + 85);
                     }}
                     
                     // Display gesture bonuses (persistent for 2 seconds with animation)
@@ -1349,7 +1372,6 @@ elif st.session_state.game_state == 'level_complete':
     st.session_state.game_state = 'level_start'
     st.rerun()
 
-# ==================== LEVEL FAILED SCREEN ====================
 # ==================== LEVEL FAILED SCREEN ====================
 elif st.session_state.game_state == 'level_failed':
     st.audio("https://raw.githubusercontent.com/gastondana627/lunar-loot/main/sounds/Space_mission_abort_unsuccessful2.wav", format="audio/wav", autoplay=True)
