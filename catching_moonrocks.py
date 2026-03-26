@@ -1141,9 +1141,7 @@ elif st.session_state.game_state == 'playing':
                             const snapshotData = snapshotCanvas.toDataURL('image/png');
                             localStorage.setItem('lunar_loot_snapshot', snapshotData);
                             snapshotTaken = true;
-                            // Play selfie capture sound
-                            selfieSound.currentTime = 0;
-                            selfieSound.play().catch(e => console.log('Selfie sound failed:', e));
+                            // Play success sound
                             completeSound.play().catch(e => console.log('Audio play failed:', e));
                             
                             // Stop camera
@@ -1151,6 +1149,10 @@ elif st.session_state.game_state == 'playing':
                             if (video.srcObject) {{
                                 video.srcObject.getTracks().forEach(track => track.stop());
                             }}
+                            
+                            // START STANDALONE RESULTS LOOP
+                            lastTimestamp = performance.now();
+                            requestAnimationFrame(runResultsLoop);
                         }}
                     }} else if (remaining <= 0 && !gameOver && !levelComplete) {{
                         gameOver = true;
@@ -1174,27 +1176,39 @@ elif st.session_state.game_state == 'playing':
                             if (video.srcObject) {{
                                 video.srcObject.getTracks().forEach(track => track.stop());
                             }}
+
+                            // START STANDALONE RESULTS LOOP
+                            lastTimestamp = performance.now();
+                            requestAnimationFrame(runResultsLoop);
                         }}
                     }}
                     
-                    // --- DRAW RESULTS OVERLAY IF ACTIVE ---
-                    if (showingResults) {{
+                    // Standalone loop for results screen to handle countdown when camera is off
+                    function runResultsLoop() {{
+                        if (!showingResults) return;
+                        
                         const now = performance.now();
                         const dt = (now - lastTimestamp) / 1000;
                         lastTimestamp = now;
                         
                         resultsCountdown -= dt;
+                        
+                        // Clear canvas with background (frozen frame)
+                        ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
                         drawResultsCard(resultsType, score, rocksLeft, resultsCountdown);
                         
-                        if (resultsCountdown <= 0 && !autoAdvanceTriggered) {{
-                            autoAdvanceTriggered = true;
-                            returnToPython({{
-                                result: resultsType === 'success' ? 'complete' : 'failed', 
-                                rocks: rocksLeft.toString()
-                            }});
+                        if (resultsCountdown <= 0) {{
+                            if (!autoAdvanceTriggered) {{
+                                autoAdvanceTriggered = true;
+                                returnToPython({{
+                                    result: resultsType === 'success' ? 'complete' : 'failed', 
+                                    rocks: rocksLeft.toString()
+                                }});
+                            }}
+                            return; // Stop loop
                         }}
-                    }} else {{
-                        lastTimestamp = performance.now();
+                        
+                        requestAnimationFrame(runResultsLoop);
                     }}
                 }});
                 
