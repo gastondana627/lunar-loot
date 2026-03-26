@@ -684,6 +684,84 @@ elif st.session_state.game_state == 'playing':
                     ctx.textAlign = 'center';
                     ctx.fillText(`SECTOR PROGRESS: ${{Math.round(progress * 100)}}%`, x + barWidth/2, y + 16);
                 }}
+
+                // --- PREMIUM RESULTS CARD HELPER ---
+                function drawResultsCard(type, score, rocksLeft, countdown) {{
+                    const cardWidth = 400;
+                    const cardHeight = 250;
+                    const x = (canvas.width - cardWidth) / 2;
+                    const y = (canvas.height - cardHeight) / 2;
+                    const isSuccess = type === 'success';
+                    const themeColor = isSuccess ? '#00f3ff' : '#EF4444';
+                    
+                    // Dark Backdrop Blur
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.restore();
+
+                    // Main Card Body (Glassmorphism)
+                    ctx.save();
+                    ctx.beginPath();
+                    if (ctx.roundRect) {{
+                        ctx.roundRect(x, y, cardWidth, cardHeight, 16);
+                    }} else {{
+                        ctx.rect(x, y, cardWidth, cardHeight);
+                    }}
+                    ctx.fillStyle = 'rgba(10, 16, 40, 0.95)';
+                    ctx.fill();
+                    
+                    // Glowing Border
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = themeColor;
+                    ctx.strokeStyle = themeColor;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // Header
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.font = '900 24px Orbitron';
+                    ctx.fillStyle = themeColor;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = themeColor;
+                    const title = isSuccess ? 'MISSION ACCOMPLISHED' : 'MISSION ABORTED';
+                    ctx.fillText(title, canvas.width/2, y + 50);
+                    ctx.restore();
+
+                    // Score Display
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.font = '400 12px Orbitron';
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillText('FINAL TACTICAL SCORE', canvas.width/2, y + 90);
+                    ctx.font = '900 56px Orbitron';
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillText(score.toString(), canvas.width/2, y + 150);
+                    
+                    // Subtext
+                    ctx.font = '600 12px Orbitron';
+                    ctx.fillStyle = isSuccess ? '#22C55E' : '#EF4444';
+                    const subText = isSuccess ? 'SECTOR SECURED • ALL MOONROCKS RECOVERED' : `${{rocksLeft}} TARGETS REMAINING IN SECTOR`;
+                    ctx.fillText(subText, canvas.width/2, y + 185);
+                    ctx.restore();
+
+                    // Countdown
+                    ctx.save();
+                    const footerY = y + cardHeight - 35;
+                    ctx.font = 'bold 14px Orbitron';
+                    ctx.fillStyle = themeColor;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`NEXT MISSION IN: ${{Math.ceil(countdown)}}s`, canvas.width/2, footerY);
+                    
+                    // Pulse bar
+                    const pulseWidth = (cardWidth - 80) * (countdown / 10);
+                    ctx.globalAlpha = 0.3;
+                    ctx.fillStyle = themeColor;
+                    ctx.fillRect(canvas.width/2 - (pulseWidth/2), footerY + 10, pulseWidth, 4);
+                    ctx.restore();
+                }}
                 // ---------------------------------------------
                 
                 const video = document.getElementById('video');
@@ -708,6 +786,12 @@ elif st.session_state.game_state == 'playing':
                 let snapshotTaken = false;
                 let autoAdvanceTriggered = false;
                 let lastBeepSecond = -1;
+                
+                // Result screen state
+                let showingResults = false;
+                let resultsType = '';
+                let resultsCountdown = 10;
+                let lastTimestamp = performance.now();
                 
                 // Load background image
                 const bgImage = new Image();
@@ -1044,6 +1128,8 @@ elif st.session_state.game_state == 'playing':
                     // Check win/lose conditions - AUTO ADVANCE
                     if (rocksLeft === 0 && !levelComplete) {{
                         levelComplete = true;
+                        showingResults = true;
+                        resultsType = 'success';
                         
                         // Take snapshot before overlay
                         if (!snapshotTaken) {{
@@ -1058,48 +1144,18 @@ elif st.session_state.game_state == 'playing':
                             // Play selfie capture sound
                             selfieSound.currentTime = 0;
                             selfieSound.play().catch(e => console.log('Selfie sound failed:', e));
-                        }}
-                        
-                        // GREEN overlay for success
-                        ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
-                        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
-                        ctx.fillStyle = '#22C55E';
-                        ctx.font = 'bold 48px Orbitron';
-                        ctx.fillText('★ LEVEL COMPLETE! ★', canvas.width/2 - 250, canvas.height/2);
-                        ctx.font = 'bold 32px Orbitron';
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.fillText(`Score: ${{score}}`, canvas.width/2 - 80, canvas.height/2 + 50);
-                        
-                        // Play success sound
-                        completeSound.play().catch(e => console.log('Audio play failed:', e));
-                        
-                        // Stop camera
-                        camera.stop();
-                        video.srcObject.getTracks().forEach(track => track.stop());
-                        
-                        // AUTO ADVANCE with 10s countdown
-                        if (!autoAdvanceTriggered) {{
-                            autoAdvanceTriggered = true;
-                            let countdown = 10;
-                            const countInterval = setInterval(() => {{
-                                // Clear previous text area
-                                ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-                                ctx.fillRect(canvas.width/2 - 175, canvas.height/2 + 80, 350, 50);
-                                ctx.fillStyle = '#22C55E';
-                                ctx.font = 'bold 24px Orbitron';
-                                ctx.fillText(`Advancing in ${{countdown}}s...`, canvas.width/2 - 120, canvas.height/2 + 115);
-                                
-                                if (countdown <= 0) {{
-                                    clearInterval(countInterval);
-                                    returnToPython({{result: 'complete', rocks: '0'}});
-                                }}
-                                countdown--;
-                            }}, 1000);
+                            completeSound.play().catch(e => console.log('Audio play failed:', e));
+                            
+                            // Stop camera
+                            camera.stop();
+                            if (video.srcObject) {{
+                                video.srcObject.getTracks().forEach(track => track.stop());
+                            }}
                         }}
                     }} else if (remaining <= 0 && !gameOver && !levelComplete) {{
                         gameOver = true;
+                        showingResults = true;
+                        resultsType = 'failed';
                         
                         // Take snapshot before overlay
                         if (!snapshotTaken) {{
@@ -1111,47 +1167,34 @@ elif st.session_state.game_state == 'playing':
                             const snapshotData = snapshotCanvas.toDataURL('image/png');
                             localStorage.setItem('lunar_loot_snapshot', snapshotData);
                             snapshotTaken = true;
+                            failSound.play().catch(e => console.log('Audio play failed:', e));
+                            
+                            // Stop camera
+                            camera.stop();
+                            if (video.srcObject) {{
+                                video.srcObject.getTracks().forEach(track => track.stop());
+                            }}
                         }}
+                    }}
+                    
+                    // --- DRAW RESULTS OVERLAY IF ACTIVE ---
+                    if (showingResults) {{
+                        const now = performance.now();
+                        const dt = (now - lastTimestamp) / 1000;
+                        lastTimestamp = now;
                         
-                        // RED overlay for failure
-                        ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
-                        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
-                        ctx.fillStyle = '#EF4444';
-                        ctx.font = 'bold 48px Orbitron';
-                        ctx.fillText('TIME UP!', canvas.width/2 - 120, canvas.height/2);
-                        ctx.font = 'bold 32px Orbitron';
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.fillText(`Final Score: ${{score}}`, canvas.width/2 - 120, canvas.height/2 + 50);
-                        ctx.fillText(`Rocks Remaining: ${{rocksLeft}}`, canvas.width/2 - 150, canvas.height/2 + 90);
+                        resultsCountdown -= dt;
+                        drawResultsCard(resultsType, score, rocksLeft, resultsCountdown);
                         
-                        // Play fail sound
-                        failSound.play().catch(e => console.log('Audio play failed:', e));
-                        
-                        // Stop camera
-                        camera.stop();
-                        video.srcObject.getTracks().forEach(track => track.stop());
-                        
-                        // AUTO ADVANCE with 10s countdown
-                        if (!autoAdvanceTriggered) {{
+                        if (resultsCountdown <= 0 && !autoAdvanceTriggered) {{
                             autoAdvanceTriggered = true;
-                            let countdown = 10;
-                            const countInterval = setInterval(() => {{
-                                // Clear previous text area
-                                ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-                                ctx.fillRect(canvas.width/2 - 175, canvas.height/2 + 120, 350, 50);
-                                ctx.fillStyle = '#EF4444';
-                                ctx.font = 'bold 24px Orbitron';
-                                ctx.fillText(`Advancing in ${{countdown}}s...`, canvas.width/2 - 120, canvas.height/2 + 155);
-                                
-                                if (countdown <= 0) {{
-                                    clearInterval(countInterval);
-                                    returnToPython({{result: 'failed', rocks: rocksLeft.toString()}});
-                                }}
-                                countdown--;
-                            }}, 1000);
+                            returnToPython({{
+                                result: resultsType === 'success' ? 'complete' : 'failed', 
+                                rocks: rocksLeft.toString()
+                            }});
                         }}
+                    }} else {{
+                        lastTimestamp = performance.now();
                     }}
                 }});
                 
